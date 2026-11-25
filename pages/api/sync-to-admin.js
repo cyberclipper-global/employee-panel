@@ -1,5 +1,12 @@
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import jwt from "jsonwebtoken";
+import { readCookie } from "@/lib/crm/http";
+
+// Only these admin-database collections may be written through this route.
+// CRM collections (crmLeads, crmCalls, …) are deliberately excluded.
+const ALLOWED_COLLECTION = /^(employees|data_[a-z]{1,30})$/;
+const SAFE_ID = /^[^/]{1,200}$/;
 
 // Initialize Firebase Admin SDK for admin database
 let adminApp;
@@ -51,6 +58,20 @@ export default async function handler(req, res) {
       });
     }
 
+    // Caller must be a signed-in employee of the same company.
+    let session = null;
+    try {
+      session = jwt.verify(readCookie(req, "employeeSession") || "", process.env.SESSION_SECRET || "", { algorithms: ["HS256"] });
+    } catch {
+      session = null;
+    }
+    if (!session || session.companyId !== companyId) {
+      return res.status(401).json({ error: "Not signed in" });
+    }
+    if (typeof collectionName !== "string" || !ALLOWED_COLLECTION.test(collectionName) || typeof documentId !== "string" || !SAFE_ID.test(documentId) || !SAFE_ID.test(companyId)) {
+      return res.status(400).json({ error: "This collection cannot be synced" });
+    }
+
     if (!adminDb) {
       return res.status(500).json({
         error: "Admin database not initialized",
@@ -79,7 +100,6 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({
       error: "Failed to sync to admin database",
-      details: error.message,
     });
   }
 }
