@@ -45,3 +45,11 @@ next-env.d.ts
 keys/
 *.json
 
+
+# *.json above keeps service-account keys out of git; these config files are safe to commit:
+!package.json
+!package-lock.json
+!jsconfig.json
+!firebase/firebase.json
+!firebase/firestore.indexes.json
+!tests/integration/firebase.json
