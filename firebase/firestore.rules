@@ -1,12 +1,12 @@
 rules_version = '2';
 
-// Firestore rules for the EMPLOYEE project (employee-panel-7a54c).
+// Firestore rules for the EMPLOYEE project (employee-27679).
 //
 // Browsers sign in to Firebase with a custom token issued by
 // /api/auth/firebase-token after password (+2FA). Its claims:
 //   role: 'employee', cid: <companyId>, eid: <employeeId>, erole: lower-case job role
 // Servers use firebase-admin, which is not affected by these rules.
-// Deploy: firebase deploy --only firestore:rules --project employee-panel-7a54c
+// Deploy: firebase deploy --only firestore:rules --project employee-27679
 service cloud.firestore {
   match /databases/{database}/documents {
 
