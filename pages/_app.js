@@ -1,37 +1,52 @@
 import "@/styles/globals.css";
-import Loader from "../loader/Loader";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { SidebarProvider } from "../context/SidebarContext";
 import { UserInfoProvider } from "../context/UserInfoContext";
 import { AuthProvider } from "../context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 
-export default function App({ Component, pageProps }) {
-  const [loading, setLoading] = useState(false);
+// Thin bar at the top while the next page loads. The current page stays on
+// screen (instead of a full-screen loader that unmounts it), and the bar
+// only appears if loading takes longer than a moment.
+function RouteProgress() {
   const router = useRouter();
-
+  const [visible, setVisible] = useState(false);
+  const timer = useRef(null);
   useEffect(() => {
-    const handleStart = (url) => {
-      if (url !== router.asPath) setLoading(true);
+    const start = (url, { shallow } = {}) => {
+      if (shallow || url === router.asPath) return;
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setVisible(true), 120);
     };
-    const handleComplete = () => setLoading(false);
-    router.events.on("routeChangeStart", handleStart);
-    router.events.on("routeChangeComplete", handleComplete);
-    router.events.on("routeChangeError", handleComplete);
+    const done = () => { clearTimeout(timer.current); setVisible(false); };
+    router.events.on("routeChangeStart", start);
+    router.events.on("routeChangeComplete", done);
+    router.events.on("routeChangeError", done);
     return () => {
-      router.events.off("routeChangeStart", handleStart);
-      router.events.off("routeChangeComplete", handleComplete);
-      router.events.off("routeChangeError", handleComplete);
+      clearTimeout(timer.current);
+      router.events.off("routeChangeStart", start);
+      router.events.off("routeChangeComplete", done);
+      router.events.off("routeChangeError", done);
     };
   }, [router]);
+  if (!visible) return null;
+  return (
+    <div aria-hidden="true" style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, zIndex: 10000, overflow: "hidden", background: "rgba(22,163,74,0.15)" }}>
+      <div style={{ height: "100%", width: "40%", background: "#16a34a", animation: "route-progress 0.9s ease-in-out infinite" }} />
+      <style>{"@keyframes route-progress{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}"}</style>
+    </div>
+  );
+}
 
+export default function App({ Component, pageProps }) {
   return (
     <AuthProvider>
       <SidebarProvider>
         <UserInfoProvider>
+          <RouteProgress />
           <ProtectedRoute>
-            {loading ? <Loader /> : <Component {...pageProps} />}
+            <Component {...pageProps} />
           </ProtectedRoute>
         </UserInfoProvider>
       </SidebarProvider>

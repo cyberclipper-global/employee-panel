@@ -394,6 +394,18 @@ const underlineKeyframes = `
 export default function SideMenu({ mobileOverlay = false }) {
   const { isOpen, toggleSidebar } = useSidebar();
   const router = useRouter();
+  // Load every menu page in the background so clicks open instantly.
+  const menuRoutesKey = menuItems(user).map((i) => i.route).filter(Boolean).join("|");
+  React.useEffect(() => {
+    const routes = ["/dashboard", ...menuRoutesKey.split("|")];
+    const run = () => routes.forEach((r) => r && router.prefetch(r).catch(() => {}));
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(run, { timeout: 2000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(run, 500);
+    return () => clearTimeout(t);
+  }, [menuRoutesKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const { user } = useUserInfo();          // ← NEW: current user info (has user.role)
   // Get token from current query and decrypt
   const { token } = router.query;
@@ -455,14 +467,7 @@ export default function SideMenu({ mobileOverlay = false }) {
               <span
                 className="font-extrabold text-thin text-gray-900 text-lg whitespace-nowrap relative overflow-visible cursor-pointer"
                 style={{ lineHeight: 1.2 }}
-                onClick={() => {
-                  if (ci && aid) {
-                    const newToken = encryptToken(ci, aid);
-                    router.push(`/dashboard`);
-                  } else {
-                    router.push("/dashboard");
-                  }
-                }}
+                onClick={() => router.push("/dashboard")}
               >
                 EMPLOYEE &nbsp;PANEL
                 <span
@@ -547,14 +552,7 @@ export default function SideMenu({ mobileOverlay = false }) {
               <>
                 <button
                   key={item.label}
-                  onClick={() => {
-                    if (ci && aid) {
-                      const newToken = encryptToken(ci, aid);
-                      router.push(`${item.route}`);
-                    } else {
-                      router.push(item.route);
-                    }
-                  }}
+                  onClick={() => router.push(item.route)}
                   className={`flex items-center ${
                     mobileOverlay
                       ? "justify-start px-6 py-4 text-lg font-semibold text-gray-900 w-full"

@@ -62,7 +62,12 @@ export function AuthProvider({ children }) {
     if (loadingRef.current) return loadingRef.current;
     loadingRef.current = (async () => {
       try {
-        const me = await authApi("me", { method: "GET" });
+        // Restoring the saved Firebase sign-in runs alongside the session
+        // check, so a page reload does not need a new custom token.
+        const [me] = await Promise.all([
+          authApi("me", { method: "GET" }),
+          typeof auth.authStateReady === "function" ? auth.authStateReady().catch(() => {}) : null,
+        ]);
         await ensureFirebaseSignIn(me.firebaseUid);
         setSessionIds({ ci: me.user.companyId, aid: me.user.employeeId });
         setUser({ id: me.user.employeeId, ...me.user });

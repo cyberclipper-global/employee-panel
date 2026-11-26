@@ -12,6 +12,7 @@ export default authRouter(employeeAuth, {
         name: principal.name,
         email: principal.email,
         role: principal.role,
+        companyName: principal.companyName || '',
       },
       firebaseUid: `emp:${principal.companyId}:${principal.employeeId}`.slice(0, 128),
     };

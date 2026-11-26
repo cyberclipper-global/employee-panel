@@ -20,7 +20,7 @@ const Header = forwardRef(function Header(
   const dropdownRef = useRef(null);
   const { isOpen } = useSidebar();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, user: sessionUser } = useAuth();
   const { token } = router.query;
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 640 : true
@@ -28,8 +28,11 @@ const Header = forwardRef(function Header(
 
   // Fetch logged-in employee info
   const { user } = useUserInfo();
-  const displayUsername = user ? (user.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : (user.name || "Employee")) : "Employee";
-  const displayCompany = user?.company || "Company";
+  // The server session already knows the name and company, so the header is
+  // filled at once even before (or without) the profile document loading.
+  const profileName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : user?.name;
+  const displayUsername = profileName || sessionUser?.name || "";
+  const displayCompany = sessionUser?.companyName || user?.company || "";
 
   // Track window width for responsive margin
   useEffect(() => {
