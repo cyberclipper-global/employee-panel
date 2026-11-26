@@ -72,7 +72,7 @@ function initializeSystem(systemType) {
       } catch (appError) {
         app = admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
-          projectId: system.projectId
+          projectId: serviceAccount.project_id || system.projectId
         }, appName);
       }
       

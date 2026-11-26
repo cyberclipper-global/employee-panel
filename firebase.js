@@ -4,17 +4,10 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { EMPLOYEE_FIREBASE_CONFIG } from "./lib/firebaseProject";
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAgwRP_XhJlGLJCa5cjmcL7laL7sWN2mQQ",
-  authDomain: "employee-panel-7a54c.firebaseapp.com",
-  projectId: "employee-panel-7a54c",
-  storageBucket: "employee-panel-7a54c.firebasestorage.app",
-  messagingSenderId: "218477018324",
-  appId: "1:218477018324:web:6f8dd8424086e0c19f8f41",
-  measurementId: "G-CS05ZXBBCR",
-};
+// Your web app's Firebase configuration (project employee-27679)
+const firebaseConfig = EMPLOYEE_FIREBASE_CONFIG;
 
 // Initialize Firebase only if it hasn't been initialized already
 let app;

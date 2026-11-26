@@ -1,0 +1,40 @@
+# Copies all Firestore data from the old employee project (employee-panel-7a54c)
+# to the new one (employee-27679). Run it from GitHub: Actions →
+# "Copy employee data to new Firebase project" → Run workflow.
+# Documents that already exist in the new project are kept (not overwritten);
+# the old project is only read. Safe to run more than once.
+#
+# Repository secrets needed:
+#   OLD_EMPLOYEE_SERVICE_ACCOUNT  service-account JSON of employee-panel-7a54c
+#   EMPLOYEE_SERVICE_ACCOUNT      service-account JSON of employee-27679
+name: Copy employee data to new Firebase project
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only count documents, do not copy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Copy data
+        env:
+          OLD_EMPLOYEE_SERVICE_ACCOUNT: ${{ secrets.OLD_EMPLOYEE_SERVICE_ACCOUNT }}
+          EMPLOYEE_SERVICE_ACCOUNT: ${{ secrets.EMPLOYEE_SERVICE_ACCOUNT }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: |
+          if [ -z "$OLD_EMPLOYEE_SERVICE_ACCOUNT" ] || [ -z "$EMPLOYEE_SERVICE_ACCOUNT" ]; then echo "::error::Add OLD_EMPLOYEE_SERVICE_ACCOUNT and EMPLOYEE_SERVICE_ACCOUNT repository secrets first"; exit 1; fi
+          node scripts/migrate-employee-project.mjs

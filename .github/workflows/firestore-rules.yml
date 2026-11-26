@@ -1,0 +1,26 @@
+# Publishes firebase/firestore.rules to the employee Firebase project.
+# Run it from GitHub: Actions → "Deploy Firestore rules" → Run workflow.
+# Needs the EMPLOYEE_SERVICE_ACCOUNT repository secret (same JSON as Vercel).
+name: Deploy Firestore rules
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Publish rules
+        env:
+          EMPLOYEE_SERVICE_ACCOUNT: ${{ secrets.EMPLOYEE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$EMPLOYEE_SERVICE_ACCOUNT" ]; then echo "::error::Add the EMPLOYEE_SERVICE_ACCOUNT repository secret first"; exit 1; fi
+          node scripts/deploy-firestore-rules.mjs

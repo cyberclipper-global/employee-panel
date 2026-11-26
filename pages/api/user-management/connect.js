@@ -32,7 +32,7 @@ function initializeSystem(systemType) {
         
         app = admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
-          projectId: system.projectId
+          projectId: serviceAccount.project_id || system.projectId
         }, appName);
       } catch (serviceError) {
         throw serviceError;

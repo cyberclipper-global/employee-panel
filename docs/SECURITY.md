@@ -41,6 +41,28 @@ To stop someone from signing in, remove or change the email on their record.
 **Passwords & Security → Sign an employee out everywhere** ends their current
 sessions immediately.
 
+## Employee Firebase project
+
+The employee panel uses the Firebase project **`employee-27679`** (it moved
+from `employee-panel-7a54c`). After switching:
+
+1. Vercel (employee panel **and** admin panel): set `EMPLOYEE_SERVICE_ACCOUNT`
+   to the service-account JSON of `employee-27679` (Firebase console →
+   Project settings → Service accounts → Generate new private key). Redeploy
+   both. If the old JSON is still there, the employee panel shows an error
+   naming the wrong project.
+2. Firebase console of `employee-27679`: create the **Firestore database**
+   and click **Authentication → Get started**.
+3. Copy the old data: employee-panel repository → Actions →
+   **Copy employee data to new Firebase project** → Run workflow (secrets
+   `OLD_EMPLOYEE_SERVICE_ACCOUNT` = old JSON, `EMPLOYEE_SERVICE_ACCOUNT` = new
+   JSON). Existing documents in the new project are never overwritten; it
+   can be run again safely. (Or locally: `node scripts/migrate-employee-project.mjs`.)
+4. Publish the rules: Actions → **Deploy Firestore rules**. Indexes: admin
+   panel → Leads → Settings → **Set up database indexes** (give the new
+   service account the "Cloud Datastore Index Admin" role) or Actions →
+   **Deploy Firestore indexes**.
+
 ## Environment variables (Vercel)
 
 Vercel → project → **Settings → Environment Variables** (Production and, if
@@ -61,7 +83,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | Variable | Status | Value |
 |---|---|---|
 | `ADMIN_SERVICE_ACCOUNT` | existing | Service-account JSON of `admin-panel-bae8d` |
-| `EMPLOYEE_SERVICE_ACCOUNT` | existing | Service-account JSON of `employee-panel-7a54c` |
+| `EMPLOYEE_SERVICE_ACCOUNT` | existing | Service-account JSON of `employee-27679` |
 | `AUTH_SESSION_SECRET` | **new, required** | 48+ random characters (base64url command) |
 | `AUTH_ENCRYPTION_KEY` | **new, required** | 32 random bytes base64 (first command). **Same value in both panels.** Encrypts vault entries and other server secrets. |
 | `CRM_PHONE_ENCRYPTION_KEY` | from Leads release | Same value in both panels |
@@ -80,7 +102,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 |---|---|---|
 | `SESSION_SECRET` | existing, **now 32+ characters** | Signs `employeeSession`. Changing it signs everyone out once. |
 | `ADMIN_SERVICE_ACCOUNT` | existing | Service-account JSON of `admin-panel-bae8d` |
-| `EMPLOYEE_SERVICE_ACCOUNT` | **new for this project** | Service-account JSON of `employee-panel-7a54c` (the same value the admin panel already has) |
+| `EMPLOYEE_SERVICE_ACCOUNT` | **new for this project** | Service-account JSON of `employee-27679` (the same value the admin panel already has) |
 | `INTERN_SERVICE_ACCOUNT` | existing | Unchanged |
 | `AUTH_ENCRYPTION_KEY`, `CRM_PHONE_ENCRYPTION_KEY`, `INTERNAL_API_SECRET` | see above | **Same values as the admin panel** |
 | `LEGACY_VAULT_KEY` | **new, temporary** | `cyberclipperSecretKey123!` (see above) |
@@ -94,7 +116,7 @@ must **not** be set in production (it is only for local testing).
 ## Firebase console (both projects)
 
 1. **Authentication → Get started** in `admin-panel-bae8d` and in
-   `employee-panel-7a54c`. No sign-in provider needs to be enabled; custom
+   `employee-27679`. No sign-in provider needs to be enabled; custom
    tokens only need Authentication to be initialised.
 2. The service accounts in the env vars sign the custom tokens locally; no
    extra IAM role is needed.
@@ -113,7 +135,7 @@ cd cyberclipper-admin-panel/firebase && firebase deploy --only firestore:indexes
 ```
 
 ```bash
-cd employee-panel/firebase && firebase deploy --only firestore:indexes --project employee-panel-7a54c
+cd employee-panel/firebase && firebase deploy --only firestore:indexes --project employee-27679
 ```
 
 4. Then publish the Firestore rules (until now the old open rules keep
@@ -124,7 +146,7 @@ cd cyberclipper-admin-panel/firebase && firebase deploy --only firestore --proje
 ```
 
 ```bash
-cd employee-panel/firebase && firebase deploy --only firestore --project employee-panel-7a54c
+cd employee-panel/firebase && firebase deploy --only firestore --project employee-27679
 ```
 
    Test in the Firebase console Rules Playground if you have other apps that

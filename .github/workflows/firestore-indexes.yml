@@ -1,5 +1,5 @@
 # Deploys the Firestore indexes in firebase/firestore.indexes.json to the
-# employee-panel-7a54c Firebase project. Run it from GitHub: Actions → "Deploy Firestore
+# employee-27679 Firebase project. Run it from GitHub: Actions → "Deploy Firestore
 # indexes" → Run workflow. It only adds indexes; nothing is deleted.
 #
 # One-time setup: repository Settings → Secrets and variables → Actions →
@@ -34,7 +34,7 @@ jobs:
         working-directory: firebase
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx -y firebase-tools@15.37.0 deploy --only firestore:indexes --project employee-panel-7a54c --non-interactive
+        run: npx -y firebase-tools@15.37.0 deploy --only firestore:indexes --project employee-27679 --non-interactive
 
       - name: Remove key
         if: always()

@@ -21,7 +21,7 @@ function initializeEmployeeSystem() {
       
       app = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId: 'employee-panel-7a54c'
+        projectId: serviceAccount.project_id
       }, appName);
     }
     

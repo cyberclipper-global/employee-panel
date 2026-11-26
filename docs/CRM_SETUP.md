@@ -74,7 +74,7 @@ for **Production** (and Preview if you use preview deployments), then
 | Variable | New? | Value |
 |---|---|---|
 | `ADMIN_SERVICE_ACCOUNT` | existing | Service-account JSON for `admin-panel-bae8d` (already set) |
-| `EMPLOYEE_SERVICE_ACCOUNT` | existing | Service-account JSON for `employee-panel-7a54c` (already set; used only by the one-time migration of old leads) |
+| `EMPLOYEE_SERVICE_ACCOUNT` | existing | Service-account JSON for `employee-27679` (already set; used only by the one-time migration of old leads) |
 | `CRM_PHONE_ENCRYPTION_KEY` | **new** | 32 random bytes, base64. **Same value in both panels.** |
 | `AUTH_SESSION_SECRET` | **new** | 48+ random characters. Admin panel only (signs the admin session; replaces the earlier `CRM_SESSION_SECRET`). |
 | `CRM_DEFAULT_COUNTRY_CODE` | optional | `91` (default) |
