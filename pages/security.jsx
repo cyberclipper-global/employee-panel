@@ -2,26 +2,17 @@ import SideMenu from "../components/sidemenu";
 import Header from "../components/header";
 import { useState, useEffect, useRef } from "react";
 import { SidebarProvider } from "../context/SidebarContext";
-import CryptoJS from "crypto-js";
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
 import Head from "next/head";
 import useStorePassword from "../hooks/useStorePassword";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 import { useSidebar } from "../context/SidebarContext";
 import { useRouter } from "next/router";
 import { useUserInfo } from "../context/UserInfoContext";
 import Loader from "../loader/Loader";
 import AddPasswordModal from "../components/AddPasswordModal";
+import { decryptToken } from "../utils/session";
+import AccountSecurity from "../components/auth/AccountSecurity";
 
 // Helper functions
 function getPasswordStrength(password) {
@@ -618,6 +609,7 @@ function SecurityContent() {
               <h1 className="text-2xl font-extrabold text-[#28BD78] mb-1">
                 Password Manager
               </h1>
+              <AccountSecurity isAdmin={false} />
               <p className="text-gray-500 text-sm mb-6">
                 Securely store, manage, and analyze your passwords. Get insights
                 on password strength, duplicates, and more.

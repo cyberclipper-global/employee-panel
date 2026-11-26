@@ -2,18 +2,7 @@ import SideMenu from "../components/sidemenu";
 import Header from "../components/header";
 import { useState, useEffect, useRef } from "react";
 import { SidebarProvider } from "../context/SidebarContext";
-import CryptoJS from "crypto-js";
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 import { useSidebar } from "../context/SidebarContext";
 import { useRouter } from "next/router";
 import { useUserInfo } from "../context/UserInfoContext";
@@ -23,6 +12,7 @@ import RegisterEmployeeForm from "../components/RegisterEmployeeForm";
 import Head from "next/head";
 import useStoreEmployees from "../hooks/useStoreEmployees";
 import { Pen, Trash2 } from "lucide-react";
+import { decryptToken } from "../utils/session";
 function EmployeesContent() {
   const router = useRouter();
   const { token } = router.query;

@@ -3,21 +3,12 @@ import { useUserInfo } from "../context/UserInfoContext";
 import useStoreData from "../hooks/useStoreData";
 import BgAnimation from "./bg-animation";
 import { UserIcon, EyeIcon, ArrowDownTrayIcon, ChatBubbleLeftRightIcon, XMarkIcon, TrashIcon } from '@heroicons/react/24/solid';
-import CryptoJS from "crypto-js";
 import { useRouter } from "next/router";
+import { decryptToken } from "../utils/session";
+import { onSnapshot } from "../utils/snapshotCache";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
 
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 export default function MusicSection({ onFavourite }) {
   const router = useRouter();
@@ -152,7 +143,7 @@ export default function MusicSection({ onFavourite }) {
     if (!companyId) return;
     let unsubscribe;
     import("firebase/firestore").then(
-      ({ getFirestore, collection, query, where, onSnapshot }) => {
+      ({ getFirestore, collection, query, where }) => {
         const db = getFirestore();
         const musicRef = collection(db, "users", companyId, "employees", employeeId, "data_audios");
         const musicQuery = query(musicRef);

@@ -1,5 +1,8 @@
 # Leads & Calling (CRM) — setup and deployment guide
 
+> Sign-in, sessions, Firestore rules and the full list of environment
+> variables are described in **docs/SECURITY.md**. Read that first.
+
 This guide covers the Lead Management & Calling system that lives in the
 **admin panel** (`/leads`) and the **employee panel** (`/my-leads`). The same
 file is in both repositories.
@@ -9,7 +12,7 @@ file is in both repositories.
 | Piece | Where | Notes |
 |---|---|---|
 | Lead data | Firestore project `admin-panel-bae8d` (the one `ADMIN_SERVICE_ACCOUNT` points to) | Collections under `users/{companyId}/`: `crmLeads` (+ `activities` subcollection), `crmFollowups`, `crmCalls`, `crmPhoneIndex`, `crmSettings`, `crmActiveCalls`. Top level: `crmCallTokens`, `crmCallIndex`. |
-| Admin APIs | admin panel `pages/api/crm/*` | Need the HttpOnly `cc_crm_admin` cookie, which is issued by `POST /api/crm/session` after the normal admin login. |
+| Admin APIs | admin panel `pages/api/crm/*` | Need the HttpOnly `cc_admin_session` cookie set by the admin sign-in (password + 2FA, see SECURITY.md). |
 | Employee APIs | employee panel `pages/api/crm/*` | Need the existing signed `employeeSession` cookie. Company and employee come from the cookie, never from the request. |
 | Calling | employee panel + Plivo | Browser SDK v2.2.21 (served from `/public/vendor/plivo`) and the Plivo Voice REST API. |
 
@@ -73,7 +76,7 @@ for **Production** (and Preview if you use preview deployments), then
 | `ADMIN_SERVICE_ACCOUNT` | existing | Service-account JSON for `admin-panel-bae8d` (already set) |
 | `EMPLOYEE_SERVICE_ACCOUNT` | existing | Service-account JSON for `employee-panel-7a54c` (already set; used only by the one-time migration of old leads) |
 | `CRM_PHONE_ENCRYPTION_KEY` | **new** | 32 random bytes, base64. **Same value in both panels.** |
-| `CRM_SESSION_SECRET` | **new** | 48+ random characters. Admin panel only. |
+| `AUTH_SESSION_SECRET` | **new** | 48+ random characters. Admin panel only (signs the admin session; replaces the earlier `CRM_SESSION_SECRET`). |
 | `CRM_DEFAULT_COUNTRY_CODE` | optional | `91` (default) |
 
 ### Employee panel project
@@ -190,8 +193,8 @@ numbers.
 
 ## API reference (summary)
 
-Admin panel (cookie `cc_crm_admin`, header `x-crm-request: 1` on writes):
-`POST|GET|DELETE /api/crm/session`, `GET|POST /api/crm/leads`,
+Admin panel (cookie `cc_admin_session`, header `x-crm-request: 1` on writes):
+`GET /api/crm/session`, `GET|POST /api/crm/leads`,
 `GET|PATCH|DELETE /api/crm/leads/:id`, `GET|POST /api/crm/leads/:id/activities`,
 `POST /api/crm/leads/:id/followups`, `POST /api/crm/leads/assign`,
 `POST /api/crm/leads/import`, `GET /api/crm/followups`,

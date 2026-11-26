@@ -1,208 +1,55 @@
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import NeuralNetwork from "../../components/bg-animation";
 import { useAuth } from "../../context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
-import CryptoJS from "crypto-js";
+import LoginFlow from "../../components/auth/LoginFlow";
 
-// Utility to encrypt ci and aid into a token
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!"; // Should be stored securely in production
-function encryptToken(ci, aid) {
-  const data = JSON.stringify({ ci, aid });
-  return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString();
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LdR-HsrAAAAAO6pQXWNROYbxE2F956skASebGNL";
+
+// Older invitation links carry ?token=<JWT with companyId>. The company ID is
+// only used to pre-fill the form, so the payload is read without verifying.
+function companyFromLink(query) {
+  if (typeof query.companyId === "string") return query.companyId;
+  if (typeof query.token === "string" && query.token.split(".").length === 3) {
+    try {
+      const json = atob(query.token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"));
+      const p = JSON.parse(json);
+      return typeof p.companyId === "string" ? p.companyId : "";
+    } catch {
+      return "";
+    }
+  }
+  return "";
 }
 
+// Sign-in: Company ID + Employee ID + password (+ 2FA when enabled).
 const Login = () => {
   const router = useRouter();
-  const [uniqueId, setUniqueId] = useState("");
-  const [companyId, setCompanyId] = useState("");
-  const [showUniqueId, setShowUniqueId] = useState(false);
-  const [showCompanyId, setShowCompanyId] = useState(false);
-  const [showNotification, setShowNotification] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState("");
-  const [captchaValue, setCaptchaValue] = useState(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  // Use the authentication hook from AuthContext
-  const { authenticate, loading, error, user } = useAuth();
+  const { refreshSession } = useAuth();
+  const [notice, setNotice] = useState("");
+  const initialCompanyId = useMemo(() => companyFromLink(router.query), [router.query]);
 
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      localStorage.getItem("logoutSuccess")
-    ) {
-      setNotificationMessage("Logged out successfully!");
-      setShowNotification(true);
+    if (typeof window !== "undefined" && localStorage.getItem("logoutSuccess")) {
+      setNotice("Logged out successfully!");
       localStorage.removeItem("logoutSuccess");
-      setTimeout(() => setShowNotification(false), 2000);
+      setTimeout(() => setNotice(""), 2500);
     }
+  }, []);
 
-    // Check for message in query params (for redirects)
-    if (router.query.message) {
-      setNotificationMessage(router.query.message);
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 3000);
-    }
-
-    // Decrypt token and set companyId if token exists in URL
-    const decryptTokenAndSetCompanyId = async (token) => {
-      try {
-        const response = await fetch("/api/decryptLoginToken", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token }),
-        });
-
-        // Check if response is ok
-        if (!response.ok) {
-          return;
-        }
-
-        // Check if response is JSON
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          return;
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.companyId) {
-          setCompanyId(data.companyId);
-        }
-      } catch (error) {}
-    };
-
-    // Check if token exists in URL query params
-    if (router.query.token) {
-      decryptTokenAndSetCompanyId(router.query.token);
-    }
-  }, [router.query]);
-
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    if (!captchaValue) {
-      setNotificationMessage("Please complete the captcha");
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 2000);
-      return;
-    }
-    
-    // Set loading state
-    setIsLoggingIn(true);
-    
-    try {
-      // Trim input values before validation
-      const trimmedCompanyId = companyId.trim();
-      const trimmedUniqueId = uniqueId.trim();
-      
-      // Use the authenticate function from the hook with trimmed values
-      const result = await authenticate(trimmedCompanyId, trimmedUniqueId);
-      if (result) {
-        setNotificationMessage("Successfully logged in!");
-        setShowNotification(true);
-        setTimeout(() => {
-          setShowNotification(false);
-          // Create CryptoJS token for playground compatibility  
-          const token = encryptToken(trimmedCompanyId, trimmedUniqueId);
-          router.push(`/playground?token=${encodeURIComponent(token)}`);
-        }, 1500);
-      } else {
-        setNotificationMessage(error || "Invalid credentials");
-        setShowNotification(true);
-        setTimeout(() => setShowNotification(false), 2000);
-      }
-    } catch (error) {
-      setNotificationMessage("Authentication failed. Please try again.");
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 2000);
-    } finally {
-      setIsLoggingIn(false);
-    }
+  const onSignedIn = async () => {
+    const ok = await refreshSession();
+    if (!ok) throw new Error("Could not start your session. Please try again.");
+    const next = typeof router.query.next === "string" && router.query.next.startsWith("/") && !router.query.next.startsWith("//") ? router.query.next : "/playground?token=s";
+    router.replace(next);
   };
 
   return (
     <div className="min-h-screen w-screen font-manrope relative overflow-hidden flex items-center justify-center">
-      {/* Full-page blur background */}
       <div className="absolute inset-0 bg-white/5 backdrop-blur-xs z-0" />
       <NeuralNetwork />
       <div className="flex flex-col md:flex-row relative z-10 w-full h-full max-w-7xl mx-auto">
-        {/* Custom Notification */}
-        {showNotification && (
-          <div
-            className={`fixed top-4 left-1/2 transform -translate-x-1/2 md:top-6 md:right-6 md:left-auto md:translate-x-0 z-50 px-4 py-2 md:px-6 md:py-3 rounded-lg shadow-lg flex items-center space-x-2 animate-in slide-in-from-right duration-300 max-w-[90vw] md:max-w-none 
-              ${
-                notificationMessage &&
-                (notificationMessage
-                  .toLowerCase()
-                  .includes("invalid credentials") ||
-                  notificationMessage
-                    .toLowerCase()
-                    .includes("please complete the captcha"))
-                  ? "bg-red-400 text-white"
-                  : "bg-green-500 text-white"
-              }
-            `}
-          >
-            {notificationMessage &&
-            notificationMessage
-              .toLowerCase()
-              .includes("invalid credentials") ? (
-              // Cross (X) SVG for error
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            ) : notificationMessage &&
-              notificationMessage
-                .toLowerCase()
-                .includes("please complete the captcha") ? (
-              // Exclamation SVG for captcha warning
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01M12 17a5 5 0 100-10 5 5 0 000 10z"
-                />
-              </svg>
-            ) : (
-              // Checkmark SVG for success
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            )}
-            <span className="font-medium text-sm md:text-base">
-              {notificationMessage}
-            </span>
-          </div>
-        )}
         {/* Left Section */}
         <div className="flex-1 flex flex-col justify-start items-start py-8 px-4 sm:px-8 md:py-[5vh] md:px-[4vw] relative bg-white/5 backdrop-blur-xs w-full md:w-auto">
           {/* Branding Info */}
@@ -229,128 +76,18 @@ const Login = () => {
         </div>
         {/* Right Section (Sign In Form) */}
         <div className="flex-1 flex justify-center items-center py-8 px-4 sm:px-8 md:py-[5vh] md:px-[4vw] w-full md:w-auto">
-          <form
-            onSubmit={handleVerify}
-            className="bg-gray-300 rounded-xl w-full max-w-[95vw] sm:max-w-[400px] pt-2 pb-4 px-4 sm:pt-3 sm:pb-6 sm:px-6 md:pt-4 md:pb-8 md:px-8 flex flex-col gap-4 sm:gap-5"
-          >
-            <h2 className="text-[24px] sm:text-[28px] md:text-[30px] font-extrabold text-[#16a34a]">
-              Employee Login
-            </h2>
-            <p className="text-[#6b7280] text-[14px] sm:text-[15px]">
-              Welcome back! Please login to access your workspace.
-            </p>
-            {/* Unique ID Input */}
-            <div className="relative">
-              <label className="font-semibold text-[14px] sm:text-[15px] text-[#22223b] mb-1 block">
-                Employee ID
-              </label>
-              <input
-                type={showUniqueId ? "text" : "password"}
-                value={uniqueId}
-                onChange={(e) => setUniqueId(e.target.value)}
-                placeholder="Enter your employee ID"
-                autoComplete="username"
-                required
-                className="w-full py-3 px-4 pr-10 text-gray-700 rounded-lg border border-[#e0dfea] text-[14px] sm:text-[15px] bg-[#f8f9fa] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]"
-              />
-              <span
-                className="absolute right-3 top-10 sm:top-12 transform -translate-y-1/2 cursor-pointer"
-                onClick={() => setShowUniqueId((prev) => !prev)}
-                tabIndex={0}
-                role="button"
-                aria-label={
-                  showUniqueId ? "Hide Employee ID" : "Show Employee ID"
-                }
-              >
-                {showUniqueId ? (
-                  // Eye-off SVG
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="#16a34a"
-                    className="w-5 h-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 3l18 18M9.88 9.88A3 3 0 0012 15a3 3 0 002.12-5.12M15 12a3 3 0 00-3-3m0 0a3 3 0 00-3 3m0 0a3 3 0 003 3m0 0a3 3 0 003-3m0 0a3 3 0 00-3-3m0 0a3 3 0 00-3 3m0 0a3 3 0 003 3m0 0a3 3 0 003-3m0 0a3 3 0 00-3-3m0 0a3 3 0 00-3 3m0 0a3 3 0 003 3m0 0a3 3 0 003-3m0 0a3 3 0 00-3-3m0 0a3 3 0 00-3 3"
-                    />
-                  </svg>
-                ) : (
-                  // Eye SVG
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="#16a34a"
-                    className="w-5 h-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="3"
-                      stroke="#16a34a"
-                      strokeWidth="1.5"
-                    />
-                  </svg>
-                )}
-              </span>
-            </div>
-
-            {/* Google reCAPTCHA */}
-            <div className="flex justify-center my-2">
-              <ReCAPTCHA
-                sitekey="6LdR-HsrAAAAAO6pQXWNROYbxE2F956skASebGNL"
-                onChange={setCaptchaValue}
-              />
-            </div>
-            {/* Login Button */}
-            <button
-              type="submit"
-              disabled={isLoggingIn}
-              className={`w-full py-[13px] rounded-lg text-[16px] sm:text-[17px] font-bold transition-all duration-200 tracking-wider border-none flex items-center justify-center gap-2 ${
-                isLoggingIn
-                  ? "bg-[#e0dfea] text-[#16a34a] cursor-not-allowed"
-                  : "bg-[#16a34a] text-white cursor-pointer"
-              }`}
-            >
-              {isLoggingIn && (
-                <svg
-                  className="animate-spin h-5 w-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-              )}
-              {isLoggingIn ? "Logging In..." : "Login"}
-            </button>
-            {/* Help Text */}
-            <div className="text-[14px] sm:text-[15px] text-[#4b5563] text-center">
-              Contact your supervisor for login assistance
-            </div>
-          </form>
+          <div className="bg-gray-300 rounded-xl w-full max-w-[95vw] sm:max-w-[420px] pt-2 pb-4 px-4 sm:pt-3 sm:pb-6 sm:px-6 md:pt-4 md:pb-8 md:px-8 flex flex-col gap-4">
+            <h2 className="text-[24px] sm:text-[28px] md:text-[30px] font-extrabold text-[#16a34a]">Sign In</h2>
+            <p className="text-[#6b7280] text-[14px] sm:text-[15px]">Welcome back! Please sign in to your account.</p>
+            {notice && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{notice}</div>}
+            <LoginFlow
+              loginIdLabel="Employee ID"
+              initialCompanyId={initialCompanyId}
+              captcha={(onChange) => <ReCAPTCHA sitekey={RECAPTCHA_SITE_KEY} onChange={onChange} />}
+              onSignedIn={onSignedIn}
+              footer={<div className="text-[14px] sm:text-[15px] text-[#4b5563] text-center">Contact your supervisor for login assistance</div>}
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -2,23 +2,10 @@ import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useSidebar } from "../context/SidebarContext";
-import CryptoJS from "crypto-js";
 import { useUserInfo } from "../context/UserInfoContext";
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
-function encryptToken(ci, aid) {
-  const data = JSON.stringify({ ci, aid });
-  return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString();
-}
+import { decryptToken, encryptToken } from "../utils/session";
+
+
 
 const menuItems = (user) => {
   return [

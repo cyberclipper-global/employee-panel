@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { secureRoute } from '@/lib/server/secure';
 
 // Initialize Firebase Admin for admin database
 let adminApp;
@@ -27,7 +28,7 @@ const initializeAdminFirebase = () => {
   return adminDb;
 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // Set CORS headers
   const allowedOrigins = [
     'https://intern-management-system-2-zeta.vercel.app/',
@@ -194,3 +195,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default secureRoute(handler, { auth: "employee|internal", employeeFields: ["employeeId"] });

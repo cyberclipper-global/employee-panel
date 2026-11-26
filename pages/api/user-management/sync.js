@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import path from 'path';
+import { secureRoute } from '@/lib/server/secure';
 
 // Initialize Firebase Admin for different management systems
 let systemDb = null;
@@ -163,7 +164,7 @@ async function handleNewData(cid, systemType, newData) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
     // Test Firebase Admin import
   } catch (importError) {
@@ -250,3 +251,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default secureRoute(handler, { auth: "employee|internal" });

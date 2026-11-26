@@ -11,19 +11,9 @@ import Head from "next/head";
 import { Pen, Trash2, Plus, CheckCircle, Clock, AlertCircle, Eye, Edit } from "lucide-react";
 import useFetchAssignedTasks from "../hooks/useFetchAssignedTasks";
 
-import CryptoJS from "crypto-js";
+import { decryptToken } from "../utils/session";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 export default function AssignTasksPage() {
   const { isOpen } = useSidebar();

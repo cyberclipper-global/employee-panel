@@ -1,22 +1,8 @@
 import CryptoJS from "crypto-js";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
 
-/**
- * Decrypts a token using AES and parses the result.
- * @param {string} token
- * @returns {{ci: string|null, aid: string|null}}
- */
-export function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+// Identity no longer travels in the URL; see utils/session.js.
+export { decryptToken } from './session';
 
 /**
  * Encrypts text using AES.

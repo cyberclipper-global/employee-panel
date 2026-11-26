@@ -1,4 +1,6 @@
+import { internalHeaders } from '@/lib/server/secure';
 import admin from 'firebase-admin';
+import { secureRoute } from '@/lib/server/secure';
 
 // Initialize Firebase Admin for employee management system
 let employeeSystemDb = null;
@@ -30,7 +32,7 @@ function initializeEmployeeSystem() {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -72,6 +74,7 @@ export default async function handler(req, res) {
         const cloudinaryResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://cyberclipper-admin-panel-ochre.vercel.app/'}/api/cloudinary-delete`, {
           method: 'POST',
           headers: {
+          ...internalHeaders(),
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -102,3 +105,4 @@ export default async function handler(req, res) {
   }
 }
 
+export default secureRoute(handler, { auth: "employee", employeeFields: ["employeeId"] });

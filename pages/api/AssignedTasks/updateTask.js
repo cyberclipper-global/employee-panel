@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { secureRoute } from '@/lib/server/secure';
 
 let adminApp;
 let adminDb;
@@ -16,7 +17,7 @@ const initAdmin = () => {
   return { adminDb };
 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { companyId, internId, taskId, collection, updates } = req.body || {};
@@ -56,3 +57,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Failed to update task', details: error.message });
   }
 }
+
+export default secureRoute(handler, { auth: "employee" });

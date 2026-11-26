@@ -1,6 +1,7 @@
 import formidable from "formidable";
 import fs from "fs";
 import path from "path";
+import { secureRoute } from '@/lib/server/secure';
 
 // Disable the default body parser to handle file uploads
 export const config = {
@@ -9,7 +10,7 @@ export const config = {
   },
 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -174,3 +175,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default secureRoute(handler, { auth: "employee" });

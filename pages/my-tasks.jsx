@@ -5,21 +5,12 @@ import { useSidebar } from "../context/SidebarContext";
 import { useUserInfo } from "../context/UserInfoContext";
 import { useRouter } from "next/router";
 import Loader from "../loader/Loader";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, query, orderBy } from "firebase/firestore";
+import { onSnapshot } from "../utils/snapshotCache";
 import { db } from "../firebase";
-import CryptoJS from "crypto-js";
+import { decryptToken } from "../utils/session";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 export default function MyTasksPage() {
   const { isOpen } = useSidebar();

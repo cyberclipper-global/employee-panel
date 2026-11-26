@@ -1,6 +1,5 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import CryptoJS from "crypto-js";
 import AutoIntegration from "../components/autointegration";
 import ManualProductIntegration from "../components/manualproductintegration";
 import { SidebarProvider } from "../context/SidebarContext";
@@ -8,19 +7,10 @@ import { useSidebar } from "../context/SidebarContext";
 import SideMenu from "../components/sidemenu";
 import Header from "../components/header";
 import Loader from "../loader/Loader";
+import { decryptToken } from "../utils/session";
 import { useUserInfo } from "../context/UserInfoContext";;
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 function ProductDashboardContent() {
   const router = useRouter();

@@ -1,144 +1,74 @@
 import { useState, useEffect, useCallback } from "react";
-import { db } from "../firebase";
-import {
-  collection,
-  query,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  getDocs,
-} from "firebase/firestore";
-import CryptoJS from "crypto-js";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!"; // Should be more secure in production
-
-function encrypt(text) {
-  return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
-}
-function decrypt(cipher) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(cipher, ENCRYPTION_KEY);
-    return bytes.toString(CryptoJS.enc.Utf8);
-  } catch {
-    return "";
-  }
+// Password vault. Entries are encrypted and decrypted on the server
+// (/api/vault); the browser never holds an encryption key.
+async function vaultApi(method, { id, body } = {}) {
+  const url = id ? `/api/vault?id=${encodeURIComponent(id)}` : "/api/vault";
+  const res = await fetch(url, {
+    method,
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { "x-crm-request": "1", ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
 }
 
-export default function useStorePassword(ci, aid) {
+// Arguments are kept for compatibility; the server uses the signed-in session.
+export default function useStorePassword(ci) {
   const [passwords, setPasswords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Firestore path: users/{ci}/employees/{aid}/passwords
-  function passwordsColRef() {
-    return collection(db, "users", ci, "employees", aid, "passwords");
-  }
-
-  // Fetch and listen to passwords for this company
-  useEffect(() => {
-    if (!ci || !aid) return;
+  const fetchPasswords = useCallback(async () => {
+    if (!ci) return [];
     setLoading(true);
-    const colRef = passwordsColRef();
-    const unsub = onSnapshot(
-      colRef,
-      (snapshot) => {
-        const data = snapshot.docs.map((doc) => {
-          const d = doc.data();
-          // Decrypt password field
-          let password = d.password;
-          if (password) password = decrypt(password);
-          return { ...d, password, id: doc.id };
-        });
-        setPasswords(data);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err.message);
-        setLoading(false);
-      }
-    );
-    return () => unsub();
-    // eslint-disable-next-line
-  }, [ci, aid]);
+    try {
+      const { items } = await vaultApi("GET");
+      setPasswords(items);
+      setError(null);
+      return items;
+    } catch (err) {
+      setError(err.message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [ci]);
 
-  // Add password
-  const addPassword = useCallback(
-    async (data) => {
-      try {
-        setError(null);
-        const encrypted = {
-          ...data,
-          password: encrypt(data.password),
-          createdAt: data.createdAt || new Date().toISOString(),
-        };
-        await addDoc(passwordsColRef(), encrypted);
-      } catch (err) {
-        setError(err.message);
-      }
-    },
-    [ci, aid]
-  );
+  useEffect(() => { fetchPasswords(); }, [fetchPasswords]);
 
-  // Update password
-  const updatePassword = useCallback(
-    async (id, data) => {
-      try {
-        setError(null);
-        const ref = doc(db, "users", ci, "employees", aid, "passwords", id);
-        const encrypted = {
-          ...data,
-          password: encrypt(data.password),
-        };
-        await updateDoc(ref, encrypted);
-      } catch (err) {
-        setError(err.message);
-      }
-    },
-    [ci, aid]
-  );
+  const addPassword = useCallback(async (data) => {
+    try {
+      setError(null);
+      await vaultApi("POST", { body: { ...data, createdAt: data.createdAt || new Date().toISOString() } });
+      await fetchPasswords();
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [fetchPasswords]);
 
-  // Delete password
+  const updatePassword = useCallback(async (id, data) => {
+    try {
+      setError(null);
+      await vaultApi("PATCH", { id, body: data });
+      await fetchPasswords();
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [fetchPasswords]);
+
   const deletePassword = useCallback(async (id) => {
     try {
       setError(null);
-      await deleteDoc(doc(db, "users", ci, "employees", aid, "passwords", id));
+      await vaultApi("DELETE", { id });
+      setPasswords((list) => list.filter((p) => p.id !== id));
     } catch (err) {
       setError(err.message);
     }
-  }, [ci, aid]);
+  }, []);
 
-  // Manual fetch (if needed)
-  const fetchPasswords = useCallback(async () => {
-    if (!ci || !aid) return [];
-    setLoading(true);
-    try {
-      const colRef = passwordsColRef();
-      const snap = await getDocs(colRef);
-      const data = snap.docs.map((doc) => {
-        const d = doc.data();
-        let password = d.password;
-        if (password) password = decrypt(password);
-        return { ...d, password, id: doc.id };
-      });
-      setPasswords(data);
-      setLoading(false);
-      return data;
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
-      return [];
-    }
-  }, [ci, aid]);
-
-  return {
-    passwords,
-    loading,
-    error,
-    addPassword,
-    updatePassword,
-    deletePassword,
-    fetchPasswords,
-  };
+  return { passwords, loading, error, addPassword, updatePassword, deletePassword, fetchPasswords };
 }

@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import pathModule from 'path';
+import { secureRoute } from '@/lib/server/secure';
 
 // Initialize Firebase Admin for admin panel
 let systemDb = null;
@@ -67,7 +68,7 @@ async function deleteInternFromIMS(companyId, internId) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
     // Test Firebase Admin import
   } catch (importError) {
@@ -161,4 +162,6 @@ export default async function handler(req, res) {
       path: path
     });
   }
-} 
+}
+
+export default secureRoute(handler, { auth: "employee|internal" });

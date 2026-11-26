@@ -1,7 +1,6 @@
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import jwt from "jsonwebtoken";
-import { readCookie } from "@/lib/crm/http";
+import { secureRoute } from '@/lib/server/secure';
 
 // Only these admin-database collections may be written through this route.
 // CRM collections (crmLeads, crmCalls, …) are deliberately excluded.
@@ -37,7 +36,7 @@ try {
   adminDb = getFirestore(adminApp);
 } catch (error) {}
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -58,16 +57,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Caller must be a signed-in employee of the same company.
-    let session = null;
-    try {
-      session = jwt.verify(readCookie(req, "employeeSession") || "", process.env.SESSION_SECRET || "", { algorithms: ["HS256"] });
-    } catch {
-      session = null;
-    }
-    if (!session || session.companyId !== companyId) {
-      return res.status(401).json({ error: "Not signed in" });
-    }
     if (typeof collectionName !== "string" || !ALLOWED_COLLECTION.test(collectionName) || typeof documentId !== "string" || !SAFE_ID.test(documentId) || !SAFE_ID.test(companyId)) {
       return res.status(400).json({ error: "This collection cannot be synced" });
     }
@@ -103,3 +92,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default secureRoute(handler, { auth: "employee" });

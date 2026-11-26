@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, forwardRef } from "react";
 import { User, LogOut, ChevronDown } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { useRouter } from "next/router";
+import { useAuth } from "../context/AuthContext";
 import { useUserInfo } from "../context/UserInfoContext";
 
 // Refactor Header to use forwardRef
@@ -19,6 +20,7 @@ const Header = forwardRef(function Header(
   const dropdownRef = useRef(null);
   const { isOpen } = useSidebar();
   const router = useRouter();
+  const { logout } = useAuth();
   const { token } = router.query;
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 640 : true
@@ -82,13 +84,13 @@ const Header = forwardRef(function Header(
     setIsDropdownOpen(false);
   };
 
-  const handleConfirmLogout = () => {
-    // Add actual logout logic here if needed
+  const handleConfirmLogout = async () => {
     setShowLogoutPopup(false);
     if (typeof window !== "undefined") {
       localStorage.setItem("logoutSuccess", "1");
     }
-    router.push("/auth/login");
+    // Ends the server session, signs out of Firebase and goes to the login page.
+    await logout();
   };
 
   const handleCancelLogout = () => {

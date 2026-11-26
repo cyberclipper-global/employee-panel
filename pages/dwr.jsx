@@ -2,24 +2,14 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import DwrModal from '../components/DwrModal';
-import CryptoJS from 'crypto-js';
 import SideMenu from '../components/sidemenu';
 import Header from '../components/header';
 import { useSidebar } from '../context/SidebarContext';
 import Loader from '../loader/Loader';
 import { useUserInfo } from '../context/UserInfoContext';
+import { decryptToken } from "../utils/session";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 export default function DwrPage() {
   const router = useRouter();

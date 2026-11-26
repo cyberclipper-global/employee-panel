@@ -6,25 +6,12 @@ import Header from '../components/header';
 import OfferLetterTemplate from '../components/OfferLetterTemplate';
 import { useSidebar } from '../context/SidebarContext';
 import { useUserInfo } from '../context/UserInfoContext';
-import CryptoJS from 'crypto-js';
+import { decryptToken } from "../utils/session";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
 
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
 
-function encryptToken(ci, aid) {
-  const data = JSON.stringify({ ci, aid });
-  return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString();
-}
+
+
 
 const DocumentTypeCard = ({ icon, title, description, onClick, isSelected }) => (
   <div
