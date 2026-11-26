@@ -1,5 +1,7 @@
+import { internalHeaders } from '@/lib/server/secure';
 import admin from 'firebase-admin';
 import pathModule from 'path';
+import { secureRoute } from '@/lib/server/secure';
 
 // Initialize Firebase Admin for admin panel
 let adminPanelDb = null;
@@ -65,7 +67,8 @@ async function triggerSync(companyId, internData) {
   try {
     const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/user-management/sync`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+          ...internalHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         cid: companyId,
         system: 'IMS',
@@ -84,7 +87,7 @@ async function triggerSync(companyId, internData) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
     // Test Firebase Admin import
   } catch (importError) {
@@ -169,4 +172,6 @@ export default async function handler(req, res) {
       path: path
     });
   }
-} 
+}
+
+export default secureRoute(handler, { auth: "employee|internal" });

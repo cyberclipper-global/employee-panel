@@ -1,16 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { db } from "../firebase";
-import {
-  collection,
-  doc,
-  deleteDoc,
-  query,
-  orderBy,
-  serverTimestamp,
-  onSnapshot,
-  getDoc,
-  setDoc,
-} from "firebase/firestore";
+import { collection, doc, deleteDoc, query, orderBy, serverTimestamp, getDoc, setDoc, limit } from "firebase/firestore";
+import { onSnapshot } from "../utils/snapshotCache";
 
 export default function useAnnouncements(cid, aid) {
   const [announcements, setAnnouncements] = useState([]);
@@ -25,7 +16,7 @@ export default function useAnnouncements(cid, aid) {
     setError(null);
     try {
       const ref = collection(db, "users", cid, "announcement");
-      const q = query(ref, orderBy("lastUpdated", "desc"));
+      const q = query(ref, orderBy("lastUpdated", "desc"), limit(100));
 
       const unsubscribe = onSnapshot(
         q,

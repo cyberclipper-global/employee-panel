@@ -2,7 +2,6 @@ import SideMenu from "../components/sidemenu";
 import Header from "../components/header";
 import { useState, useEffect, useRef } from "react";
 import { SidebarProvider } from "../context/SidebarContext";
-import CryptoJS from "crypto-js";
 import { useRouter } from "next/router";
 import { useSidebar } from "../context/SidebarContext";
 import AutoIntegration from "../components/autointegration";
@@ -13,19 +12,10 @@ import Head from "next/head";
 import ProductDetailModal from "../components/ProductDetailModal";
 import useStoreProducts from "../hooks/useStoreProducts";
 import { Pen, Trash2 } from "lucide-react";
+import { decryptToken, encryptToken } from "../utils/session";
 
 // Utility to decrypt token into ci and aid
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 function ProductsContent() {
   const router = useRouter();
@@ -368,7 +358,7 @@ function ProductsContent() {
                 <button
                   className="w-full sm:w-auto bg-[#16a34a] hover:bg-[#28DB78] text-white font-semibold px-5 py-2 rounded-lg shadow flex items-center justify-center gap-2"
                   aria-label="Add Product"
-                  onClick={() => router.push(`/product-dashboard?token=${encodeURIComponent(CryptoJS.AES.encrypt(JSON.stringify({ ci, aid }), ENCRYPTION_KEY).toString())}`)}
+                  onClick={() => router.push(`/product-dashboard?token=${encodeURIComponent(encryptToken(ci, aid))}`)}
                 >
                   <svg
                     className="w-5 h-5"

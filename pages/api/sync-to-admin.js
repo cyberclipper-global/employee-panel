@@ -1,5 +1,11 @@
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { secureRoute } from '@/lib/server/secure';
+
+// Only these admin-database collections may be written through this route.
+// CRM collections (crmLeads, crmCalls, …) are deliberately excluded.
+const ALLOWED_COLLECTION = /^(employees|data_[a-z]{1,30})$/;
+const SAFE_ID = /^[^/]{1,200}$/;
 
 // Initialize Firebase Admin SDK for admin database
 let adminApp;
@@ -30,7 +36,7 @@ try {
   adminDb = getFirestore(adminApp);
 } catch (error) {}
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -49,6 +55,10 @@ export default async function handler(req, res) {
       return res.status(400).json({
         error: "Missing required fields: companyId, collectionName, documentId",
       });
+    }
+
+    if (typeof collectionName !== "string" || !ALLOWED_COLLECTION.test(collectionName) || typeof documentId !== "string" || !SAFE_ID.test(documentId) || !SAFE_ID.test(companyId)) {
+      return res.status(400).json({ error: "This collection cannot be synced" });
     }
 
     if (!adminDb) {
@@ -79,7 +89,8 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({
       error: "Failed to sync to admin database",
-      details: error.message,
     });
   }
 }
+
+export default secureRoute(handler, { auth: "employee" });

@@ -1,41 +1,9 @@
-// // Import the functions you need from the SDKs you need
-// import { initializeApp } from "firebase/app";
-// import { getFirestore } from "firebase/firestore";
-// import { getAnalytics } from "firebase/analytics";
-// import { getStorage } from "firebase/storage";
-// // TODO: Add SDKs for Firebase products that you want to use
-// // https://firebase.google.com/docs/web/setup#available-libraries
-
-// // Your web app's Firebase configuration
-// // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-// const firebaseConfig = {
-//   apiKey: "AIzaSyBpBnzyXF_GcSvu5VN1pEus5sa818Pmx1c",
-//   authDomain: "admin-panel-bae8d.firebaseapp.com",
-//   projectId: "admin-panel-bae8d",
-//   storageBucket: "admin-panel-bae8d.firebasestorage.app",
-//   messagingSenderId: "516496008943",
-//   appId: "1:516496008943:web:d63f1218d27a5ae713dd1a",
-//   measurementId: "G-6NWQS1VBKT"
-// };
-
-// // Initialize Firebase
-// const app = initializeApp(firebaseConfig);
-
-// // Only initialize analytics in the browser
-// let analytics;
-// if (typeof window !== "undefined") {
-//   analytics = getAnalytics(app);
-// }
-
-// const db = getFirestore(app);
-// const storage = getStorage(app);
-// export { db, storage };
-
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -70,5 +38,17 @@ if (typeof window !== "undefined") {
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// Signed in with a server-issued custom token (see context/AuthContext.jsx);
+// Firestore security rules rely on its claims.
+const auth = getAuth(app);
+
+// Local testing only: NEXT_PUBLIC_FIREBASE_EMULATOR=1 points the browser at
+// the Firebase emulators. Never set it in production.
+if (process.env.NEXT_PUBLIC_FIREBASE_EMULATOR === "1" && typeof window !== "undefined" && !globalThis.__ccEmulatorsConnected) {
+  globalThis.__ccEmulatorsConnected = true;
+  connectFirestoreEmulator(db, "127.0.0.1", Number(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || 8085));
+  connectAuthEmulator(auth, `http://127.0.0.1:${process.env.NEXT_PUBLIC_AUTH_EMULATOR_PORT || 9099}`, { disableWarnings: true });
+}
+
 // Export the Firebase services
-export { db, storage, app };
+export { db, storage, app, auth };

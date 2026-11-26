@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --import ./tests/register.mjs --test 'tests/unit/*.test.mjs'"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -26,6 +27,7 @@
     "next": "15.3.8",
     "nodemailer": "^7.0.6",
     "papaparse": "^5.5.3",
+    "plivo": "4.79.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.1.1",

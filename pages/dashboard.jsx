@@ -6,7 +6,6 @@ import { useSidebar } from "../context/SidebarContext";
 import { useRouter } from "next/router";
 import { useUserInfo } from "../context/UserInfoContext";
 import Loader from "../loader/Loader";
-import CryptoJS from "crypto-js";
 import Support from "../components/support";
 import EmployeeCard from "../components/EmployeeCard";
 import useStoreEmployees from "../hooks/useStoreEmployees";
@@ -14,22 +13,10 @@ import useStorePassword from "../hooks/useStorePassword";
 import useNotesTasks from "../hooks/useNotesTasks";
 import useAnnouncements from "../hooks/useAnnouncements";
 import { totalMedia } from "./data";
+import { decryptToken } from "../utils/session";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
-function encryptToken(ci, aid) {
-  const data = JSON.stringify({ ci, aid });
-  return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString();
-}
+
+
 
 function DashboardContent() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

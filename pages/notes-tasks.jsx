@@ -2,7 +2,6 @@ import SideMenu from "../components/sidemenu";
 import Header from "../components/header";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { SidebarProvider } from "../context/SidebarContext";
-import CryptoJS from "crypto-js";
 import { useRouter } from "next/router";
 import { useSidebar } from "../context/SidebarContext";
 import { useUserInfo } from "../context/UserInfoContext";
@@ -12,17 +11,8 @@ import Head from "next/head";
 import useNotesTasks from "../hooks/useNotesTasks";
 import { storage } from "../firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+import { decryptToken } from "../utils/session";
+
 
 // Helper to generate unique id
 const generateId = () =>

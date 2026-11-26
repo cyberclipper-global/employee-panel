@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import path from 'path';
+import { secureRoute } from '@/lib/server/secure';
 
 // Initialize Firebase Admin for different management systems
 let systemDb = null;
@@ -45,7 +46,7 @@ function initializeSystem(systemType) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -101,3 +102,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default secureRoute(handler, { auth: "employee" });

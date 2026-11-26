@@ -4,28 +4,15 @@ import { useState, useEffect, useRef } from "react";
 import { SidebarProvider } from "../context/SidebarContext";
 import { useSidebar } from "../context/SidebarContext";
 import { useRouter } from "next/router";
-import CryptoJS from "crypto-js";
 import useStoreUserInfoEdit from "../hooks/useStoreUserInfoEdit";
 import Loader from "../loader/Loader";
+import { decryptToken, encryptToken } from "../utils/session";
 
 // Utility to decrypt token into ci and aid
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!"; // Should match the key used for encryption
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 // Utility to re-encrypt ci and aid for navigation
-function encryptToken(ci, aid) {
-  const data = JSON.stringify({ ci, aid });
-  return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString();
-}
+
 
 function PlaygroundContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);

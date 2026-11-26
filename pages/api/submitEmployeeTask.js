@@ -1,9 +1,9 @@
-import { getFirestore, doc, setDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
-import { db } from "../../firebase";
+import { getEmployeeDb } from "@/lib/server/employeeProject";
 import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { secureRoute } from '@/lib/server/secure';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // Set CORS headers
   const allowedOrigins = [
     'https://intern-management-system-2-zeta.vercel.app/',
@@ -54,11 +54,14 @@ export default async function handler(req, res) {
       });
     }
 
-    const firestore = getFirestore();
-    const batch = writeBatch(firestore);
+    // Server-side write with firebase-admin (the browser SDK has no
+    // credentials on the server and Firestore rules would reject it).
+    const firestore = getEmployeeDb();
+    const tasksDoc = firestore.collection('users').doc(companyId).collection('employees').doc(employeeId).collection('tasks').doc('task-data');
+    const batch = firestore.batch();
 
     // Step 1: Add/Update task in completed_tasks collection
-    const completedTaskRef = doc(firestore, 'users', companyId, 'employees', employeeId, 'tasks', 'task-data', 'completed_tasks', taskId);
+    const completedTaskRef = tasksDoc.collection('completed_tasks').doc(String(taskId));
     
     const completedTaskData = {
       ...taskData,
@@ -72,7 +75,7 @@ export default async function handler(req, res) {
     batch.set(completedTaskRef, completedTaskData, { merge: true });
 
     // Step 2: Remove from pending_tasks collection
-    const pendingTaskRef = doc(firestore, 'users', companyId, 'employees', employeeId, 'tasks', 'task-data', 'pending_tasks', taskId);
+    const pendingTaskRef = tasksDoc.collection('pending_tasks').doc(String(taskId));
     batch.delete(pendingTaskRef);
 
     // Commit the batch operations
@@ -120,8 +123,7 @@ export default async function handler(req, res) {
       try {
         const userDocRef = adminDb.collection('users').doc(companyId);
         await userDocRef.set({ 
-          lastUpdated: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          lastUpdated: new Date().toISOString()
         }, { merge: true });
 
         const employeeTasksDocRef = userDocRef.collection('employee_tasks').doc(employeeId);
@@ -228,3 +230,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default secureRoute(handler, { auth: "employee|internal", employeeFields: ["employeeId"] });

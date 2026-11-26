@@ -1,14 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import {
-  collection,
-  setDoc,
-  doc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { collection, setDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { onSnapshot } from "../utils/snapshotCache";
 
 const useStoreProducts = (cid) => {
   const [products, setProducts] = useState([]);

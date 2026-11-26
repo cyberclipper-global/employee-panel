@@ -2,23 +2,10 @@ import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useSidebar } from "../context/SidebarContext";
-import CryptoJS from "crypto-js";
 import { useUserInfo } from "../context/UserInfoContext";
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
-function encryptToken(ci, aid) {
-  const data = JSON.stringify({ ci, aid });
-  return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString();
-}
+import { decryptToken, encryptToken } from "../utils/session";
+
+
 
 const menuItems = (user) => {
   return [
@@ -207,17 +194,17 @@ const menuItems = (user) => {
     ),
 /*******  e34fd138-9904-443b-a691-237cc1146e8b  *******/
   },
-  // Only show Leads option for Sales role (case-insensitive contains 'sales')
-  ...(user?.role?.toLowerCase()?.includes("sales") ? [{
-    label: "Leads",
-    route: "/leads",
+  // My Leads: every employee sees only the leads an admin assigned to them
+  {
+    label: "My Leads",
+    route: "/my-leads",
     icon: (isActive) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
         <path d="M12 2a4 4 0 014 4v1a4 4 0 11-8 0V6a4 4 0 014-4z" stroke={isActive ? "#16a34a" : "#222"} strokeWidth="1.5"/>
         <path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke={isActive ? "#16a34a" : "#222"} strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
-  }] : []),
+  },
   {
     label: "DWR",
     route: "/dwr",

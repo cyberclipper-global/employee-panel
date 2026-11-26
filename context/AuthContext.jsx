@@ -1,281 +1,110 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { signInWithCustomToken, signOut } from "firebase/auth";
+import { auth } from "../firebase";
+import { setSessionIds } from "../utils/session";
+import { stopAllSnapshots } from "../utils/snapshotCache";
 
+// Identity comes from the server: the HttpOnly `employeeSession` cookie is
+// set by /api/auth/* after password (and 2FA when enabled). The browser then signs in to
+// Firebase with a short-lived custom token so Firestore security rules can
+// check which company it belongs to.
 const AuthContext = createContext();
+
+const PUBLIC_ROUTES = new Set(["/", "/auth/login", "/auth/signup", "/privacy", "/terms"]);
+
+async function authApi(action, { method = "POST", body } = {}) {
+  const res = await fetch(`/api/auth/${action}`, {
+    method,
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { "x-crm-request": "1", ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  let data = {};
+  try { data = await res.json(); } catch { data = {}; }
+  if (!res.ok) {
+    const err = new Error(data.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    err.code = data.code;
+    throw err;
+  }
+  return data;
+}
+
+export { authApi };
+
+async function ensureFirebaseSignIn(expectedUid) {
+  if (auth.currentUser && auth.currentUser.uid === expectedUid) return;
+  const { token } = await authApi("firebase-token", { body: {} });
+  await signInWithCustomToken(auth, token);
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isValidating, setIsValidating] = useState(false);
   const router = useRouter();
+  const loadingRef = useRef(null);
 
-  const getCookie = (name) => {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-      let c = ca[i];
-      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-    }
-    return null;
-  };
-
-  const removeCookie = (name) => {
-    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
-  };
-
-  // JWT-based session cookie utilities for both companyId and employeeId
-  const setSessionCookie = async (companyId, employeeId, days = 7) => {
-    try {
-      // Call API to create JWT token
-      const response = await fetch('/api/createSession', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          companyId,
-          employeeId,
-          days
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create session');
-      }
-
-      const data = await response.json();
-      const token = data.token;
-      
-      const expires = new Date();
-      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
-      const cookieValue = `employeeSession=${token};expires=${expires.toUTCString()};path=/;SameSite=Strict${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
-      document.cookie = cookieValue;
-      
-    } catch (error) {
-      console.error('Failed to set session cookie:', error);
-      setError('Session creation failed. Please try again.');
-    }
-  };
-
-  const getSessionFromCookie = async () => {
-    try {
-      const token = getCookie('employeeSession');
-      if (!token) {
-        return null;
-      }
-      
-      // Call API to verify JWT token
-      const response = await fetch('/api/verifySession', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      if (!response.ok) {
-        // If token is invalid, remove it
-        removeCookie('employeeSession');
-        return null;
-      }
-
-      const data = await response.json();
-      return data.sessionData;
-    } catch (error) {
-      removeCookie('employeeSession');
-      return null;
-    }
-  };
-
-  // Extract companyId from URL token (existing logic - NO CHANGES)
-  const extractCompanyIdFromUrl = async (token) => {
-    try {
-      const response = await fetch('/api/decryptLoginToken', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        return null;
-      }
-
-      const data = await response.json();
-      
-      if (data.success && data.companyId) {
-        return data.companyId;
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  // Authenticate user with companyId and employeeId
-  const authenticate = async (companyId, employeeId) => {
-    try {
-      // Validate user exists in Firestore
-      const employeesRef = doc(db, 'users', companyId, 'employees', employeeId);
-      const employeeSnap = await getDoc(employeesRef);
-      
-      if (employeeSnap.exists()) {
-        const userData = { 
-          id: employeeSnap.id, 
-          companyId, 
-          employeeId, 
-          ...employeeSnap.data() 
-        };
-        
-        // Store both companyId and employeeId in session cookie
-        await setSessionCookie(companyId, employeeId);
-        
-        setUser(userData);
-        setError(null);
-        return true;
-      } else {
-        setError('Invalid credentials');
-        return false;
-      }
-    } catch (error) {
-      setError('Authentication failed');
-      return false;
-    }
-  };
-
-  // Logout function
-  const logout = () => {
+  const logout = useCallback(async () => {
+    stopAllSnapshots();
+    try { await authApi("logout", { body: {} }); } catch { /* ignore */ }
+    try { await signOut(auth); } catch { /* ignore */ }
+    setSessionIds(null);
     setUser(null);
     setError(null);
-    removeCookie('employeeSession');
-    router.push('/');
-  };
+    router.push("/auth/login");
+  }, [router]);
 
-  // Validate session by checking both URL token and cookie
-  const validateSession = async () => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    
-    // Don't validate session on login page or home page
-    if (router.pathname === '/' || router.pathname === '/auth/login') {
-      return false;
-    }
-    
-    // Prevent multiple simultaneous validations
-    if (isValidating) {
-      return false;
-    }
-    
-    // Get session data from cookie (both companyId and employeeId)
-    const sessionData = await getSessionFromCookie();
-    
-    if (!sessionData || !sessionData.companyId || !sessionData.employeeId) {
-      setLoading(false);
-      return false;
-    }
-
-    const { companyId, employeeId } = sessionData;
-
-    // If user is already set with same credentials, skip Firestore call
-    if (user && user.companyId === companyId && user.employeeId === employeeId) {
-      setLoading(false);
-      return true;
-    }
-
-    setIsValidating(true);
-
-    // Validate user exists in Firestore
-    try {
-      const employeesRef = doc(db, 'users', companyId, 'employees', employeeId);
-      const employeeSnap = await getDoc(employeesRef);
-      
-      if (employeeSnap.exists()) {
-        const userData = { id: employeeSnap.id, companyId, employeeId, ...employeeSnap.data() };
-        setUser(userData);
-        setLoading(false);
-        setIsValidating(false);
+  // Loads the server session; returns true when signed in.
+  const validateSession = useCallback(async () => {
+    if (loadingRef.current) return loadingRef.current;
+    loadingRef.current = (async () => {
+      try {
+        const me = await authApi("me", { method: "GET" });
+        await ensureFirebaseSignIn(me.firebaseUid);
+        setSessionIds({ ci: me.user.companyId, aid: me.user.employeeId });
+        setUser({ id: me.user.employeeId, ...me.user });
+        setError(null);
         return true;
-      } else {
-        removeCookie('employeeSession');
-        setLoading(false);
-        setIsValidating(false);
+      } catch (err) {
+        if (err.status && err.status !== 401) setError("Could not verify your session");
+        setSessionIds(null);
+        setUser(null);
+        try { await signOut(auth); } catch { /* ignore */ }
         return false;
-      }
-    } catch (error) {
-      removeCookie('employeeSession');
-      setLoading(false);
-      setIsValidating(false);
-      return false;
-    }
-  };
-
-  // Check session on app load
-  useEffect(() => {
-    const checkSession = async () => {
-      // Don't check session on login page or home page
-      if (router.pathname === '/' || router.pathname === '/auth/login') {
+      } finally {
         setLoading(false);
-        return;
+        loadingRef.current = null;
       }
-      
-      await validateSession();
-    };
-    
-    checkSession();
-  }, [router.query.token, router.pathname]);
+    })();
+    return loadingRef.current;
+  }, [logout]);
 
-  // Watch for route changes and validate session
   useEffect(() => {
-    const handleRouteChange = async () => {
-      // Don't validate session on login page or home page
-      if (router.pathname === '/' || router.pathname === '/auth/login') {
-        return;
-      }
-      
-      // Only validate session on protected routes
-      if (!user) {
-        const isValid = await validateSession();
-        if (!isValid) {
-          router.push('/');
-        }
-      }
-    };
-
-    handleRouteChange();
-  }, [router.pathname, user]);
+    if (PUBLIC_ROUTES.has(router.pathname)) {
+      setLoading(false);
+      return;
+    }
+    if (!user) validateSession();
+  }, [router.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value = {
     user,
     loading,
     error,
-    authenticate,
     logout,
     validateSession,
+    refreshSession: validateSession,
     isAuthenticated: !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

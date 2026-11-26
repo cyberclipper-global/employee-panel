@@ -1,0 +1,81 @@
+rules_version = '2';
+
+// Firestore rules for the EMPLOYEE project (employee-panel-7a54c).
+//
+// Browsers sign in to Firebase with a custom token issued by
+// /api/auth/firebase-token after password (+2FA). Its claims:
+//   role: 'employee', cid: <companyId>, eid: <employeeId>, erole: lower-case job role
+// Servers use firebase-admin, which is not affected by these rules.
+// Deploy: firebase deploy --only firestore:rules --project employee-panel-7a54c
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null && request.auth.token.role == 'employee'; }
+    function inCompany(cid) { return signedIn() && request.auth.token.cid == cid; }
+    function isSelf(cid, eid) { return inCompany(cid) && request.auth.token.eid == eid; }
+    // HR / managers / team leads manage the employee list and products.
+    function privileged(cid) {
+      return inCompany(cid) && request.auth.token.erole in ['hr', 'manager', 'team lead'];
+    }
+
+    match /users/{cid} {
+      allow read, write: if false;
+
+      match /employees/{eid} {
+        allow get: if isSelf(cid, eid) || privileged(cid);
+        allow list: if privileged(cid);
+        allow create, delete: if privileged(cid);
+        // Employees edit their own profile but not their role or status.
+        allow update: if privileged(cid) || (isSelf(cid, eid)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'active', 'companyId']));
+
+        // Assignments may be created for colleagues; read/changed by the owner.
+        match /assignments/{id} {
+          allow create: if inCompany(cid);
+          allow read, update, delete: if isSelf(cid, eid) || privileged(cid);
+        }
+        // The encrypted password vault is server-only.
+        match /passwords/{rest=**} {
+          allow read, write: if false;
+        }
+        // Everything else under an employee belongs to that employee; HR may read.
+        match /{coll}/{rest=**} {
+          allow read: if (isSelf(cid, eid) || privileged(cid)) && coll != 'passwords';
+          allow write: if isSelf(cid, eid) && !(coll in ['passwords', 'assignments']);
+        }
+      }
+
+      match /products/{pid} {
+        allow read: if inCompany(cid);
+        allow write: if privileged(cid);
+        match /{rest=**} {
+          allow read: if inCompany(cid);
+          allow write: if privileged(cid);
+        }
+      }
+
+      // Company-level aggregate documents used by the interns pages.
+      match /data/{rest=**} {
+        allow read, write: if privileged(cid);
+      }
+
+      match /announcement/{aid} {
+        allow read: if inCompany(cid);
+        allow write: if false;
+        match /readers/{eid} {
+          allow read: if inCompany(cid);
+          allow write: if isSelf(cid, eid);
+        }
+      }
+    }
+
+    // Public website forms: create only, small documents, never readable.
+    match /Demo/{id} {
+      allow create: if request.resource.data.size() <= 30 && request.resource.data.status == 'pending';
+    }
+    match /{coll}/{id} {
+      allow create: if coll == 'contact us'
+        && request.resource.data.size() <= 30 && request.resource.data.status == 'pending';
+    }
+  }
+}

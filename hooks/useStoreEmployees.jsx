@@ -1,14 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import {
-  collection,
-  setDoc,
-  doc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  serverTimestamp, // Add this import
-} from 'firebase/firestore';
+import { collection, setDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { onSnapshot } from "../utils/snapshotCache";
 
 const useStoreEmployees = (cid) => {
   const [employees, setEmployees] = useState([]);
@@ -34,7 +27,13 @@ const useStoreEmployees = (cid) => {
         setLoading(false);
       },
       (err) => {
-        setError(err.message);
+        // Only HR / managers / team leads may list colleagues (Firestore
+        // rules). For everyone else the list is simply empty.
+        if (err && err.code === 'permission-denied') {
+          setEmployees([]);
+        } else {
+          setError(err.message);
+        }
         setLoading(false);
       }
     );

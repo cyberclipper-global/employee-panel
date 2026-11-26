@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import { secureRoute } from '@/lib/server/secure';
 
 // Initialize admin Firebase app for admin database
 let adminApp;
@@ -18,7 +19,7 @@ try {
   // Error initializing admin Firebase app
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -73,3 +74,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default secureRoute(handler, { auth: "employee" });

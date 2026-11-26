@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, orderBy } from "firebase/firestore";
+import { onSnapshot } from "../utils/snapshotCache";
 import { db } from "../firebase";
 
 export default function useFetchEmployeeData(companyId, employeeId) {

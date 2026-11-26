@@ -9,22 +9,13 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import { useUserInfo } from "../context/UserInfoContext";
-import CryptoJS from "crypto-js";
 import { useRouter } from "next/router";
 import useStoreData from "../hooks/useStoreData";
+import { decryptToken } from "../utils/session";
+import { onSnapshot } from "../utils/snapshotCache";
 
-const ENCRYPTION_KEY = "cyberclipperSecretKey123!";
 
-function decryptToken(token) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(token, ENCRYPTION_KEY);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    const { ci, aid } = JSON.parse(decrypted);
-    return { ci, aid };
-  } catch {
-    return { ci: null, aid: null };
-  }
-}
+
 
 export default function DocumentsSection({ onEdit, onAdd, onDelete }) {
   const router = useRouter();
@@ -189,7 +180,7 @@ export default function DocumentsSection({ onEdit, onAdd, onDelete }) {
         setLoading(true);
         setError(null);
 
-        const { getFirestore, collection, query, onSnapshot } = await import(
+        const { getFirestore, collection, query } = await import(
           "firebase/firestore"
         );
         const db = getFirestore();
