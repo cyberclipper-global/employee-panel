@@ -25,9 +25,9 @@ service cloud.firestore {
         allow get: if isSelf(cid, eid) || privileged(cid);
         allow list: if privileged(cid);
         allow create, delete: if privileged(cid);
-        // Employees edit their own profile but not their role or status.
+        // Employees edit their own profile but not their role, status or sign-in email.
         allow update: if privileged(cid) || (isSelf(cid, eid)
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'active', 'companyId']));
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'active', 'companyId', 'email', 'emailLower']));
 
         // Assignments may be created for colleagues; read/changed by the owner.
         match /assignments/{id} {

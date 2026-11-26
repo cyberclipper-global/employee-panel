@@ -58,6 +58,8 @@ const useStoreEmployees = (cid) => {
       // Ensure all fields from RegisterEmployeeForm are saved
       const dataToSave = {
         ...employeeData,
+        // Lower-case copy used by the email + OTP sign-in lookup.
+        ...(employeeData.email ? { emailLower: String(employeeData.email).trim().toLowerCase() } : {}),
         status: employeeData.status || 'Active',
         dateRegistered: serverTimestamp(), // Add registration timestamp
       };
@@ -76,7 +78,8 @@ const useStoreEmployees = (cid) => {
     setError(null);
     try {
       const empRef = doc(db, 'users', cid, 'employees', id);
-      await updateDoc(empRef, updatedData);
+      const toSave = typeof updatedData?.email === 'string' ? { ...updatedData, emailLower: updatedData.email.trim().toLowerCase() } : updatedData;
+      await updateDoc(empRef, toSave);
       setLoading(false);
     } catch (err) {
       setError(err.message);

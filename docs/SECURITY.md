@@ -8,38 +8,38 @@ and the exact order to deploy in.
 
 | Area | Before | Now |
 |---|---|---|
-| Sign-in | Company ID + Unique ID only, checked in the browser. `123`/`123` logged into a real admin account. | Server-side sign-in: Company ID + ID + **password** (scrypt hash). **2FA (authenticator app) is mandatory for admins** and optional for employees (`EMPLOYEE_REQUIRE_2FA=true` makes it mandatory). 5 wrong attempts lock the account for 15 minutes. Backdoor removed. |
-| Sessions | Browser-readable cookies; the admin cookie was encrypted with a key shipped to the browser; employees could mint a session for any ID through `/api/createSession`. | HttpOnly, signed cookies (`cc_admin_session`, `employeeSession`) issued only after the full sign-in. A password change or an admin reset signs the user out everywhere. Logout really ends the session. |
+| Sign-in | Company ID + Unique ID only, checked in the browser. `123`/`123` logged into a real admin account. | **Email + one-time code**, checked on the server: the person types their registered email, receives a 6-digit code (valid 10 minutes, single use, 5 attempts) and is signed in. No IDs, passwords or captcha. If one email belongs to several companies/accounts, the person picks one. Backdoor removed. |
+| Sessions | Browser-readable cookies; the admin cookie was encrypted with a key shipped to the browser; employees could mint a session for any ID through `/api/createSession`. | HttpOnly, signed cookies (`cc_admin_session`, `employeeSession`) issued only after the full sign-in. An admin can sign an employee out everywhere. Logout really ends the session. |
 | Identity in URLs | `?token=` was AES-encrypted with the hard-coded key `cyberclipperSecretKey123!` and contained the admin's sign-in ID. | Pages get the company/user ID from the server session. `?token=s` is a meaningless marker kept for compatibility. The hard-coded key is gone from the code. |
 | Database access | Browsers read and wrote Firestore with the public config. With open rules, anyone on the internet could read or change any company's data. | After sign-in the browser receives a Firebase **custom token** whose claims say which company (and employee) it is. **Firestore rules** (`firebase/firestore.rules`) restrict every read/write to that company and, for employees, to their own records. Credentials, CRM data and password vaults are server-only. |
 | API routes | Most routes accepted `companyId`/`employeeId` from the request with no login. `/api/get-token` gave an admin token for any company. | Every route requires a session (or a server-to-server secret), checks that the IDs in the request match the session, and blocks cross-site requests. Integration endpoints verify JWT signatures (before, some only decoded them). Test/debug routes were removed. |
 | Password vault | Encrypted in the browser with the hard-coded key. | Encrypted on the server (`/api/vault`). Old entries are converted automatically the first time they are opened. |
 | Speed / cost | 47 live listeners, re-created on every page change; unbounded lists; the admin DWR page read every report of every employee one after another. | Identical listeners are shared and kept briefly across page changes; growing lists are capped; DWR reads run in parallel and only fetch recent reports (single documents where possible). |
 
-## First sign-in for existing users
+## How people sign in
 
-Nobody has a password yet. The first time someone signs in:
+1. Open the login page and type the registered email address.
+2. A 6-digit code arrives by email (company document `email` for admins,
+   employee document `email` for employees).
+3. Type the code → signed in.
 
-1. They enter Company ID and their ID (Admin ID or Employee ID) and leave the
-   password empty → **Continue**.
-2. A 6-digit code is emailed to the address stored on their record
-   (company document `email` for admins, employee document `email` for
-   employees).
-3. They enter the code and choose a password (10+ characters, three of:
-   lowercase, uppercase, numbers, symbols).
-4. Admins (and employees when 2FA is required) scan a QR code with Google
-   Authenticator / Microsoft Authenticator and get 10 one-time recovery
-   codes.
+**Before go-live:**
 
-**Before go-live, make sure every company and employee record has a working
-email address**, otherwise that person cannot receive the code. You can add it
-in the Firebase console (`users/{companyId}.email`,
-`users/{companyId}/employees/{employeeId}.email` in the admin project).
+- Every company and employee record must have the person's real email,
+  otherwise they cannot sign in.
+- Run the one-time backfill so emails saved with capital letters also match
+  (it adds a lower-case copy, `emailLower`):
 
-Forgotten password: "Forgot password?" on the login page (email code; 2FA is
-still required afterwards). Lost phone: use a recovery code. An admin can
-reset an employee's password and 2FA from **Passwords & Security → Reset an
-employee's sign-in**.
+```bash
+cd cyberclipper-admin-panel && ADMIN_SERVICE_ACCOUNT='<json>' EMPLOYEE_SERVICE_ACCOUNT='<json>' node scripts/backfill-email-lower.mjs
+```
+
+- Deploy the Firestore **indexes** (employee sign-in looks employees up by
+  email across companies and needs them; see "Deployment order").
+
+To stop someone from signing in, remove or change the email on their record.
+**Passwords & Security → Sign an employee out everywhere** ends their current
+sessions immediately.
 
 ## Environment variables (Vercel)
 
@@ -63,14 +63,12 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `ADMIN_SERVICE_ACCOUNT` | existing | Service-account JSON of `admin-panel-bae8d` |
 | `EMPLOYEE_SERVICE_ACCOUNT` | existing | Service-account JSON of `employee-panel-7a54c` |
 | `AUTH_SESSION_SECRET` | **new, required** | 48+ random characters (base64url command) |
-| `AUTH_ENCRYPTION_KEY` | **new, required** | 32 random bytes base64 (first command). **Same value in both panels.** Encrypts 2FA secrets and vault entries. |
+| `AUTH_ENCRYPTION_KEY` | **new, required** | 32 random bytes base64 (first command). **Same value in both panels.** Encrypts vault entries and other server secrets. |
 | `CRM_PHONE_ENCRYPTION_KEY` | from Leads release | Same value in both panels |
 | `JWT_SECRET` | existing, **now required** | 32+ random characters. Signs product-integration tokens. If yours is shorter, replace it (existing integration tokens then need to be fetched again). |
 | `INTERNAL_API_SECRET` | **new, required** | 32+ random characters. **Same value in both panels.** Used for server-to-server calls. |
 | `LEGACY_VAULT_KEY` | **new, temporary** | `cyberclipperSecretKey123!` — only so old vault entries can be converted. Remove it once users have opened their vaults. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `FROM_EMAIL` | existing, **now required** | Sign-in verification codes are emailed. |
-| `RECAPTCHA_SECRET_KEY` | optional | Enables server-side reCAPTCHA checks on sign-in (the widget alone protects nothing). |
-| `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` | optional | Overrides the built-in site key. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `FROM_EMAIL` | existing, **now required** | Sign-in codes are emailed; without working SMTP nobody can sign in. |
 | `APP_BASE_URL` | optional | Admin panel URL used in the sign-up email. |
 | `EMPLOYEE_PANEL_URL`, `INTERN_PANEL_URL` | optional | Targets of the shareable sign-in links. |
 | `LOGIN_LINK_SECRET` | optional | If the intern system verifies signed links, set it to the secret configured there. |
@@ -87,8 +85,6 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `AUTH_ENCRYPTION_KEY`, `CRM_PHONE_ENCRYPTION_KEY`, `INTERNAL_API_SECRET` | see above | **Same values as the admin panel** |
 | `LEGACY_VAULT_KEY` | **new, temporary** | `cyberclipperSecretKey123!` (see above) |
 | `SMTP_*` | existing, **now required** | As above |
-| `EMPLOYEE_REQUIRE_2FA` | optional | `true` to make 2FA mandatory for employees |
-| `RECAPTCHA_SECRET_KEY` | optional | As above |
 | `NEXTAUTH_URL` | existing | **Admin panel** URL (internal Cloudinary delete call) |
 | `PLIVO_*` | from Leads release | See CRM_SETUP.md |
 
@@ -108,7 +104,19 @@ must **not** be set in production (it is only for local testing).
 1. Set all environment variables above in **both** Vercel projects.
 2. Deploy **both** apps (this branch).
 3. Sign in once as an admin and as an employee to check the flow.
-4. Only then publish the Firestore rules (until now the old open rules keep
+   Run the email backfill script (see "How people sign in") and deploy the
+   **indexes right away** — employee sign-in needs them (takes a few minutes
+   to build):
+
+```bash
+cd cyberclipper-admin-panel/firebase && firebase deploy --only firestore:indexes --project admin-panel-bae8d
+```
+
+```bash
+cd employee-panel/firebase && firebase deploy --only firestore:indexes --project employee-panel-7a54c
+```
+
+4. Then publish the Firestore rules (until now the old open rules keep
    working, so nothing breaks in between):
 
 ```bash
@@ -125,6 +133,7 @@ cd employee-panel/firebase && firebase deploy --only firestore --project employe
 
 ### Things that intentionally stopped working
 
+- Signing in with Company ID / Admin ID / Employee ID, passwords, 2FA apps and the captcha (replaced by email + code).
 - The `123` / `123` login shortcut.
 - The HR deep link that opened the admin **Employees** page without an admin
   login (HR uses the employee panel's Employees page).
@@ -149,7 +158,7 @@ npm test
 
 Integration tests (admin panel repository; needs Java 11+ and the employee
 panel checked out next to it). Starts the Firebase emulators, a fake SMTP
-server and both apps, then tests sign-in, 2FA, lockout, session revocation,
+server and both apps, then tests email + code sign-in, code limits, session revocation,
 API protection, Firestore rules, vault and the Leads/calling flow:
 
 ```bash
