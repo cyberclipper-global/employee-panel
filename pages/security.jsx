@@ -12,7 +12,6 @@ import { useUserInfo } from "../context/UserInfoContext";
 import Loader from "../loader/Loader";
 import AddPasswordModal from "../components/AddPasswordModal";
 import { decryptToken } from "../utils/session";
-import AccountSecurity from "../components/auth/AccountSecurity";
 
 // Helper functions
 function getPasswordStrength(password) {
@@ -609,7 +608,6 @@ function SecurityContent() {
               <h1 className="text-2xl font-extrabold text-[#28BD78] mb-1">
                 Password Manager
               </h1>
-              <AccountSecurity isAdmin={false} />
               <p className="text-gray-500 text-sm mb-6">
                 Securely store, manage, and analyze your passwords. Get insights
                 on password strength, duplicates, and more.

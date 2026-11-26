@@ -1,71 +1,48 @@
-// Unit tests for the authentication building blocks.
+// Unit tests for the sign-in building blocks (email + one-time code).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 
 process.env.AUTH_ENCRYPTION_KEY = crypto.randomBytes(32).toString('base64');
 
-const { hashPassword, verifyPassword, passwordProblem } = await import('../../lib/auth/password.js');
-const { hotp, verifyTotp, base32Encode, base32Decode, generateSecret, otpauthUrl, currentStep } = await import('../../lib/auth/totp.js');
-const { sealSecret, openSecret, codeHash, safeEqualHex, makeRecoveryCodes, normalizeRecoveryCode, timingSafeStringEqual } = await import('../../lib/auth/secrets.js');
+const { sealSecret, openSecret, codeHash, safeEqualHex, randomDigits, timingSafeStringEqual } = await import('../../lib/auth/secrets.js');
+const { normalizeEmail, accountId } = await import('../../lib/auth/core.js');
 
-test('password hash verifies and rejects wrong passwords', async () => {
-  const h = await hashPassword('Correct-Horse-9');
-  assert.match(h, /^scrypt\$16384\$8\$1\$/);
-  assert.equal(await verifyPassword('Correct-Horse-9', h), true);
-  assert.equal(await verifyPassword('correct-horse-9', h), false);
-  assert.equal(await verifyPassword('anything', 'not-a-hash'), false);
-  assert.notEqual(await hashPassword('Correct-Horse-9'), h, 'salted');
+test('emails are normalised and validated', () => {
+  assert.equal(normalizeEmail('  Ravi.Kumar@Example.COM '), 'ravi.kumar@example.com');
+  for (const bad of ['', 'no-at-sign', 'a@b', 'a@b.c', 'x/y@z.com', 'a b@c.com', null, 42]) {
+    assert.throws(() => normalizeEmail(bad), /valid email/, String(bad));
+  }
 });
 
-test('password policy', () => {
-  assert.match(passwordProblem('short'), /at least 10/);
-  assert.match(passwordProblem('alllowercaseletters'), /three of/);
-  assert.match(passwordProblem('Password123'), /too common|three/i);
-  assert.match(passwordProblem('CID-ABC-Secret1!', { identifiers: ['CID-ABC'] }), /must not contain/);
-  assert.equal(passwordProblem('Blue-Tiger-2026'), null);
+test('one-time codes are 6 digits and compared by keyed hash', () => {
+  const seen = new Set();
+  for (let i = 0; i < 200; i += 1) {
+    const c = randomDigits(6);
+    assert.match(c, /^\d{6}$/);
+    seen.add(c);
+  }
+  assert.ok(seen.size > 150, 'codes are random');
+  assert.equal(safeEqualHex(codeHash('admin:a@b.co:123456'), codeHash('admin:a@b.co:123456')), true);
+  assert.equal(safeEqualHex(codeHash('admin:a@b.co:123456'), codeHash('admin:a@b.co:123457')), false);
+  assert.equal(safeEqualHex(codeHash('admin:a@b.co:123456'), codeHash('employee:a@b.co:123456')), false, 'codes are bound to the panel');
+  assert.equal(safeEqualHex('', ''), false);
 });
 
-test('TOTP matches RFC 6238 test vector (SHA1)', () => {
-  const secret = base32Encode(Buffer.from('12345678901234567890'));
-  assert.equal(secret, 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ');
-  assert.deepEqual(base32Decode(secret), Buffer.from('12345678901234567890'));
-  // RFC 6238 Appendix B: T=59s -> 94287082 (8 digits); 6 digits -> 287082
-  assert.equal(hotp(secret, Math.floor(59 / 30)), '287082');
-  assert.equal(hotp(secret, Math.floor(1111111109 / 30)), '081804');
-});
-
-test('TOTP verification window and replay protection', () => {
-  const secret = generateSecret();
-  const now = Date.now();
-  const step = currentStep(now);
-  const code = hotp(secret, step);
-  assert.equal(verifyTotp(secret, code, { now }), step);
-  assert.equal(verifyTotp(secret, hotp(secret, step - 1), { now }), step - 1, 'previous step accepted');
-  assert.equal(verifyTotp(secret, hotp(secret, step - 3), { now }), null, 'old code rejected');
-  assert.equal(verifyTotp(secret, code, { now, lastUsedStep: step }), null, 'replay rejected');
-  assert.equal(verifyTotp(secret, '12345', { now }), null);
-  assert.match(otpauthUrl({ issuer: 'CC Admin', account: 'a@b', secret }), /^otpauth:\/\/totp\/CC%20Admin%3Aa%40b\?secret=/);
+test('account ids are stable and separate per panel', () => {
+  assert.equal(accountId('admin', 'c1'), accountId('admin', 'c1'));
+  assert.notEqual(accountId('admin', 'c1'), accountId('employee', 'c1'));
+  assert.notEqual(accountId('employee', 'c1', 'e1'), accountId('employee', 'c1', 'e2'));
+  assert.match(accountId('employee', 'c/1', 'e 1'), /^[0-9a-f]{40}$/);
 });
 
 test('secrets are sealed with AES-GCM and tamper-evident', () => {
-  const sealed = sealSecret('JBSWY3DPEHPK3PXP');
-  assert.notEqual(sealed, sealSecret('JBSWY3DPEHPK3PXP'));
-  assert.equal(openSecret(sealed), 'JBSWY3DPEHPK3PXP');
+  const sealed = sealSecret('vault-password');
+  assert.notEqual(sealed, sealSecret('vault-password'));
+  assert.equal(openSecret(sealed), 'vault-password');
   const buf = Buffer.from(sealed.slice(3), 'base64');
   buf[buf.length - 1] ^= 1;
   assert.throws(() => openSecret(`v1.${buf.toString('base64')}`));
-});
-
-test('codes, hashes and recovery codes', () => {
-  assert.equal(safeEqualHex(codeHash('a'), codeHash('a')), true);
-  assert.equal(safeEqualHex(codeHash('a'), codeHash('b')), false);
-  assert.equal(safeEqualHex('', ''), false);
-  const codes = makeRecoveryCodes();
-  assert.equal(codes.length, 10);
-  assert.equal(new Set(codes).size, 10);
-  assert.match(codes[0], /^[0-9A-F]{5}-[0-9A-F]{5}$/);
-  assert.equal(normalizeRecoveryCode(' ab12c-3d4e5 '), 'AB12C3D4E5');
   assert.equal(timingSafeStringEqual('x', 'x'), true);
   assert.equal(timingSafeStringEqual('x', 'y'), false);
 });

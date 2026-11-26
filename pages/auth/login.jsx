@@ -1,34 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import NeuralNetwork from "../../components/bg-animation";
 import { useAuth } from "../../context/AuthContext";
-import ReCAPTCHA from "react-google-recaptcha";
 import LoginFlow from "../../components/auth/LoginFlow";
 
-const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LdR-HsrAAAAAO6pQXWNROYbxE2F956skASebGNL";
-
-// Older invitation links carry ?token=<JWT with companyId>. The company ID is
-// only used to pre-fill the form, so the payload is read without verifying.
-function companyFromLink(query) {
-  if (typeof query.companyId === "string") return query.companyId;
-  if (typeof query.token === "string" && query.token.split(".").length === 3) {
-    try {
-      const json = atob(query.token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"));
-      const p = JSON.parse(json);
-      return typeof p.companyId === "string" ? p.companyId : "";
-    } catch {
-      return "";
-    }
-  }
-  return "";
-}
-
-// Sign-in: Company ID + Employee ID + password (+ 2FA when enabled).
+// Sign-in: registered email + one-time code. Verified on the server (/api/auth/*).
 const Login = () => {
   const router = useRouter();
   const { refreshSession } = useAuth();
   const [notice, setNotice] = useState("");
-  const initialCompanyId = useMemo(() => companyFromLink(router.query), [router.query]);
+  const initialEmail = typeof router.query.email === "string" ? router.query.email : "";
 
   useEffect(() => {
     if (typeof window !== "undefined" && localStorage.getItem("logoutSuccess")) {
@@ -78,12 +59,10 @@ const Login = () => {
         <div className="flex-1 flex justify-center items-center py-8 px-4 sm:px-8 md:py-[5vh] md:px-[4vw] w-full md:w-auto">
           <div className="bg-gray-300 rounded-xl w-full max-w-[95vw] sm:max-w-[420px] pt-2 pb-4 px-4 sm:pt-3 sm:pb-6 sm:px-6 md:pt-4 md:pb-8 md:px-8 flex flex-col gap-4">
             <h2 className="text-[24px] sm:text-[28px] md:text-[30px] font-extrabold text-[#16a34a]">Sign In</h2>
-            <p className="text-[#6b7280] text-[14px] sm:text-[15px]">Welcome back! Please sign in to your account.</p>
+            <p className="text-[#6b7280] text-[14px] sm:text-[15px]">Enter your registered email. We will send you a one-time code.</p>
             {notice && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{notice}</div>}
             <LoginFlow
-              loginIdLabel="Employee ID"
-              initialCompanyId={initialCompanyId}
-              captcha={(onChange) => <ReCAPTCHA sitekey={RECAPTCHA_SITE_KEY} onChange={onChange} />}
+              initialEmail={initialEmail}
               onSignedIn={onSignedIn}
               footer={<div className="text-[14px] sm:text-[15px] text-[#4b5563] text-center">Contact your supervisor for login assistance</div>}
             />
