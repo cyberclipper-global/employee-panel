@@ -1,0 +1,41 @@
+# Deploys the Firestore indexes in firebase/firestore.indexes.json to the
+# employee-panel-7a54c Firebase project. Run it from GitHub: Actions → "Deploy Firestore
+# indexes" → Run workflow. It only adds indexes; nothing is deleted.
+#
+# One-time setup: repository Settings → Secrets and variables → Actions →
+# New repository secret named EMPLOYEE_SERVICE_ACCOUNT, value = the same service-account JSON
+# as in Vercel.
+name: Deploy Firestore indexes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Write service-account key
+        env:
+          SA_JSON: ${{ secrets.EMPLOYEE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA_JSON" ]; then echo "::error::Add the EMPLOYEE_SERVICE_ACCOUNT repository secret first"; exit 1; fi
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+
+      - name: Deploy indexes
+        working-directory: firebase
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx -y firebase-tools@15.37.0 deploy --only firestore:indexes --project employee-panel-7a54c --non-interactive
+
+      - name: Remove key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
