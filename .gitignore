@@ -53,3 +53,6 @@ keys/
 !firebase/firebase.json
 !firebase/firestore.indexes.json
 !tests/integration/firebase.json
+
+# Firebase emulator logs
+firestore-debug.log
