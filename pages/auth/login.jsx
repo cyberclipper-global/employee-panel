@@ -11,6 +11,15 @@ const Login = () => {
   const [notice, setNotice] = useState("");
   const initialEmail = typeof router.query.email === "string" ? router.query.email : "";
 
+  // Old invitation links carried ?token=...; sign-in only needs the email,
+  // so drop it from the address bar.
+  useEffect(() => {
+    if (router.isReady && router.query.token) {
+      const { token, ...rest } = router.query; // eslint-disable-line no-unused-vars
+      router.replace({ pathname: "/auth/login", query: rest }, undefined, { shallow: true });
+    }
+  }, [router.isReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (typeof window !== "undefined" && localStorage.getItem("logoutSuccess")) {
       setNotice("Logged out successfully!");
@@ -22,7 +31,7 @@ const Login = () => {
   const onSignedIn = async () => {
     const ok = await refreshSession();
     if (!ok) throw new Error("Could not start your session. Please try again.");
-    const next = typeof router.query.next === "string" && router.query.next.startsWith("/") && !router.query.next.startsWith("//") ? router.query.next : "/playground?token=s";
+    const next = typeof router.query.next === "string" && router.query.next.startsWith("/") && !router.query.next.startsWith("//") ? router.query.next : "/playground";
     router.replace(next);
   };
 

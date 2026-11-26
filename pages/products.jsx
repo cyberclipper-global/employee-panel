@@ -358,7 +358,7 @@ function ProductsContent() {
                 <button
                   className="w-full sm:w-auto bg-[#16a34a] hover:bg-[#28DB78] text-white font-semibold px-5 py-2 rounded-lg shadow flex items-center justify-center gap-2"
                   aria-label="Add Product"
-                  onClick={() => router.push(`/product-dashboard?token=${encodeURIComponent(encryptToken(ci, aid))}`)}
+                  onClick={() => router.push(`/product-dashboard`)}
                 >
                   <svg
                     className="w-5 h-5"

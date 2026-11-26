@@ -252,7 +252,7 @@ function DashboardContent() {
                   {/* Your Tasks */}
                   <div 
                     className="bg-white rounded-2xl shadow p-6 flex flex-col justify-between min-w-[220px] border border-gray-200 transition-transform duration-200 hover:shadow-lg hover:scale-105 group cursor-pointer"
-                    onClick={() => router.push(`/notes-tasks${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                    onClick={() => router.push(`/notes-tasks`)}
                   >
                     <div className="flex items-center justify-between w-full">
                       <div>
@@ -294,7 +294,7 @@ function DashboardContent() {
                   
                   {/* Your Profile */}
                   <div className="bg-white rounded-2xl shadow p-6 flex flex-col justify-between min-w-[220px] border border-gray-200 transition-transform duration-200 hover:shadow-lg hover:scale-105 group cursor-pointer"
-                    onClick={() => router.push(`/employeeinfo_edit${token ? `?token=${encodeURIComponent(token)}` : ''}`)}                    
+                    onClick={() => router.push(`/employeeinfo_edit`)}                    
                   >
                     <div className="flex items-center justify-between w-full">
                       <div>
@@ -365,7 +365,7 @@ function DashboardContent() {
                   {/* Company Announcements */}
                   <div 
                     className="bg-white rounded-2xl shadow p-6 flex flex-col justify-between min-w-[220px] border border-gray-200 transition-transform duration-200 hover:shadow-lg hover:scale-105 group cursor-pointer"
-                    onClick={() => router.push(`/announcements${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                    onClick={() => router.push(`/announcements`)}
                   >
                     <div className="flex items-center justify-between w-full">
                       <div>
@@ -419,7 +419,7 @@ function DashboardContent() {
                       Your Recent Tasks
                     </h3>
                     <button 
-                      onClick={() => router.push(`/notes-tasks${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                      onClick={() => router.push(`/notes-tasks`)}
                       className="px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-medium text-sm transition-colors duration-200"
                     >
                       View All
@@ -518,7 +518,7 @@ function DashboardContent() {
                       Latest Announcements
                     </h3>
                     <button 
-                      onClick={() => router.push(`/announcements${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                      onClick={() => router.push(`/announcements`)}
                       className="px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-medium text-sm transition-colors duration-200"
                     >
                       View All
@@ -579,7 +579,7 @@ function DashboardContent() {
                 <h2 className="text-2xl font-bold text-white mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <button 
-                    onClick={() => router.push(`/notes-tasks${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                    onClick={() => router.push(`/notes-tasks`)}
                     className="bg-white/90 hover:bg-white p-4 rounded-lg flex items-center gap-3 transition-colors duration-200 shadow-sm"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -589,7 +589,7 @@ function DashboardContent() {
                   </button>
                   
                   <button 
-                    onClick={() => router.push(`/announcements${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                    onClick={() => router.push(`/announcements`)}
                     className="bg-white/90 hover:bg-white p-4 rounded-lg flex items-center gap-3 transition-colors duration-200 shadow-sm"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -598,7 +598,7 @@ function DashboardContent() {
                   </button>
                   
                   <button 
-                    onClick={() => router.push(`/employeeinfo_edit${token ? `?token=${encodeURIComponent(token)}` : ''}`)}                    
+                    onClick={() => router.push(`/employeeinfo_edit`)}                    
                     className="bg-white/90 hover:bg-white p-4 rounded-lg flex items-center gap-3 transition-colors duration-200 shadow-sm"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -617,7 +617,7 @@ function DashboardContent() {
                 </p>
                 <button
                   className="px-6 py-2 rounded-full font-semibold text-[#28DB78] bg-white hover:bg-gray-100 shadow transition-colors text-lg"
-                  onClick={() => router.push(`/playground${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                  onClick={() => router.push(`/playground`)}
                 >
                   Learn More
                 </button>
@@ -631,13 +631,13 @@ function DashboardContent() {
                 <div className="flex gap-4 flex-wrap justify-center mt-4">
                   <button
                     className="px-6 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-[#16a34a] to-[#28BD78] hover:from-[#28BD78] hover:to-[#16a34a] shadow transition-colors text-lg"
-                    onClick={() => router.push(`/terms${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                    onClick={() => router.push(`/terms`)}
                   >
                     Read Terms
                   </button>
                   <button
                     className="px-6 py-2 rounded-full font-semibold text-[#16a34a] bg-white border border-[#16a34a] hover:bg-[#28BD78] shadow transition-colors text-lg"
-                    onClick={() => router.push(`/privacy${token ? `?token=${encodeURIComponent(token)}` : ''}`)}
+                    onClick={() => router.push(`/privacy`)}
                   >
                     Read Privacy Policy
                   </button>

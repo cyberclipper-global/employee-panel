@@ -169,9 +169,7 @@ function PlaygroundContent() {
                   className="bg-[#28BD78] hover:bg-[#16a34a] text-white font-semibold py-1 px-2 sm:py-2 sm:px-4 md:px-6 rounded-lg shadow transition-colors duration-200 text-xs sm:text-sm md:text-base"
                   onClick={() =>
                     router.push(
-                      `/dashboard?token=${encodeURIComponent(
-                        encryptToken(ci, aid)
-                      )}`
+                      `/dashboard`
                     )
                   }
                 >
@@ -243,9 +241,7 @@ function PlaygroundContent() {
                             className="underline cursor-pointer hover:text-[#28BD78]"
                             onClick={() =>
                               router.push(
-                                `/products?token=${encodeURIComponent(
-                                  encryptToken(ci, aid)
-                                )}`
+                                `/products`
                               )
                             }
                           >
@@ -258,9 +254,7 @@ function PlaygroundContent() {
                             className="underline cursor-pointer hover:text-[#28BD78]"
                             onClick={() =>
                               router.push(
-                                `/employees?token=${encodeURIComponent(
-                                  encryptToken(ci, aid)
-                                )}`
+                                `/employees`
                               )
                             }
                           >
@@ -273,9 +267,7 @@ function PlaygroundContent() {
                             className="underline cursor-pointer hover:text-[#28BD78]"
                             onClick={() =>
                               router.push(
-                                `/users-permissions?token=${encodeURIComponent(
-                                  encryptToken(ci, aid)
-                                )}`
+                                `/users-permissions`
                               )
                             }
                           >
@@ -288,9 +280,7 @@ function PlaygroundContent() {
                             className="underline cursor-pointer hover:text-[#28BD78]"
                             onClick={() =>
                               router.push(
-                                `/api-keys?token=${encodeURIComponent(
-                                  encryptToken(ci, aid)
-                                )}`
+                                `/api-keys`
                               )
                             }
                           >
@@ -303,9 +293,7 @@ function PlaygroundContent() {
                             className="underline cursor-pointer hover:text-[#28BD78]"
                             onClick={() =>
                               router.push(
-                                `/security?token=${encodeURIComponent(
-                                  encryptToken(ci, aid)
-                                )}`
+                                `/security`
                               )
                             }
                           >
@@ -318,9 +306,7 @@ function PlaygroundContent() {
                             className="underline cursor-pointer hover:text-[#28BD78]"
                             onClick={() =>
                               router.push(
-                                `/announcements?token=${encodeURIComponent(
-                                  encryptToken(ci, aid)
-                                )}`
+                                `/announcements`
                               )
                             }
                           >
@@ -333,9 +319,7 @@ function PlaygroundContent() {
                             className="underline cursor-pointer hover:text-[#28BD78]"
                             onClick={() =>
                               router.push(
-                                `/notes-tasks?token=${encodeURIComponent(
-                                  encryptToken(ci, aid)
-                                )}`
+                                `/notes-tasks`
                               )
                             }
                           >

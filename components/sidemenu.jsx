@@ -458,7 +458,7 @@ export default function SideMenu({ mobileOverlay = false }) {
                 onClick={() => {
                   if (ci && aid) {
                     const newToken = encryptToken(ci, aid);
-                    router.push(`/dashboard?token=${encodeURIComponent(newToken)}`);
+                    router.push(`/dashboard`);
                   } else {
                     router.push("/dashboard");
                   }
@@ -550,7 +550,7 @@ export default function SideMenu({ mobileOverlay = false }) {
                   onClick={() => {
                     if (ci && aid) {
                       const newToken = encryptToken(ci, aid);
-                      router.push(`${item.route}?token=${encodeURIComponent(newToken)}`);
+                      router.push(`${item.route}`);
                     } else {
                       router.push(item.route);
                     }

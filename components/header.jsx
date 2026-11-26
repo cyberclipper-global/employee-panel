@@ -73,7 +73,7 @@ const Header = forwardRef(function Header(
     // Navigate to admin info edit page, preserve token if available
     setIsDropdownOpen(false);
     if (token) {
-      router.push(`/employeeinfo_edit?token=${encodeURIComponent(token)}`);
+      router.push(`/employeeinfo_edit`);
     } else {
       router.push("/employeeinfo_edit");
     }
