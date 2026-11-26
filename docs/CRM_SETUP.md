@@ -75,7 +75,7 @@ for **Production** (and Preview if you use preview deployments), then
 |---|---|---|
 | `ADMIN_SERVICE_ACCOUNT` | existing | Service-account JSON for `admin-panel-bae8d` (already set) |
 | `EMPLOYEE_SERVICE_ACCOUNT` | existing | Service-account JSON for `employee-27679` (already set; used only by the one-time migration of old leads) |
-| `CRM_PHONE_ENCRYPTION_KEY` | **new** | 32 random bytes, base64. **Same value in both panels.** |
+| `CRM_PHONE_ENCRYPTION_KEY` | recommended | 32 random bytes, base64. **Same value in both panels.** If missing, `AUTH_ENCRYPTION_KEY` / `INTERNAL_API_SECRET` are used instead (leads can still be added; calling needs the same keys in both panels). |
 | `AUTH_SESSION_SECRET` | **new** | 48+ random characters. Admin panel only (signs the admin session; replaces the earlier `CRM_SESSION_SECRET`). |
 | `CRM_DEFAULT_COUNTRY_CODE` | optional | `91` (default) |
 
