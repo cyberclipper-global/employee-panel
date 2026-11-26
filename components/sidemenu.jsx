@@ -394,6 +394,7 @@ const underlineKeyframes = `
 export default function SideMenu({ mobileOverlay = false }) {
   const { isOpen, toggleSidebar } = useSidebar();
   const router = useRouter();
+  const { user } = useUserInfo();          // ← NEW: current user info (has user.role)
   // Load every menu page in the background so clicks open instantly.
   const menuRoutesKey = menuItems(user).map((i) => i.route).filter(Boolean).join("|");
   React.useEffect(() => {
@@ -406,7 +407,6 @@ export default function SideMenu({ mobileOverlay = false }) {
     const t = setTimeout(run, 500);
     return () => clearTimeout(t);
   }, [menuRoutesKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const { user } = useUserInfo();          // ← NEW: current user info (has user.role)
   // Get token from current query and decrypt
   const { token } = router.query;
   const { ci, aid } = decryptToken(token);
