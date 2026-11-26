@@ -15,8 +15,13 @@ register(
       const local = spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('file:');
       if (!local) return next(spec, context);
       let lastErr;
+      // JSON imports (bundled by Next) need an import attribute in plain Node.
+      const ctx = spec.endsWith('.json') ? { ...context, importAttributes: { ...context.importAttributes, type: 'json' } } : context;
       for (const ext of EXTS) {
-        try { return await next(spec + ext, context); } catch (err) { lastErr = err; }
+        try {
+          const r = await next(spec + ext, ctx);
+          return spec.endsWith('.json') ? { ...r, importAttributes: { type: 'json' } } : r;
+        } catch (err) { lastErr = err; }
       }
       throw lastErr;
     }

@@ -122,7 +122,10 @@ export function ErrorBanner({ error, onRetry }) {
       <div>
         <div>{message}</div>
         {indexUrl && (
-          <a className="mt-1 inline-block font-medium underline" href={indexUrl} target="_blank" rel="noopener noreferrer">Create the required database index</a>
+          <div className="mt-1">
+            Fix: an admin opens <strong>Leads → Settings</strong> and clicks <strong>Set up database indexes</strong>; after 5–15 minutes, retry.{' '}
+            <a className="font-medium underline" href={indexUrl} target="_blank" rel="noopener noreferrer">(or create this one index in Firebase)</a>
+          </div>
         )}
       </div>
       {onRetry && <Button size="sm" variant="secondary" onClick={onRetry}>Retry</Button>}
