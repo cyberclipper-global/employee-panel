@@ -3,7 +3,7 @@ import { Drawer, Button, StatusBadge, PriorityBadge, LoadingBlock, ErrorBanner, 
 import { NoteComposer, FollowupScheduler, FollowupList, CallList, InfoGrid } from './Sections';
 import Dialer from './Dialer';
 import { crmFetch } from '../../utils/crmClient';
-import { LEAD_STATUSES, LEAD_PRIORITIES, formatDuration } from '../../lib/crm/constants';
+import { LEAD_STATUSES, LEAD_PRIORITIES, formatDuration, channelLabel } from '../../lib/crm/constants';
 
 export default function MyLeadDrawer({ leadId, onClose, onChanged, callingEnabled, canDelete }) {
   const [data, setData] = useState(null);
@@ -97,6 +97,8 @@ export default function MyLeadDrawer({ leadId, onClose, onChanged, callingEnable
             ['Company', lead.companyName],
             ['Location', lead.location],
             ['Lead source', lead.source],
+            lead.channel && ['Channel', channelLabel(lead.channel)],
+            lead.campaignName && ['Campaign', lead.campaignName],
             ['Interested product / service', lead.product],
             ['Next follow-up', formatDateTime(lead.nextFollowUpAt)],
             ['Calls', `${lead.callCount} (${formatDuration(lead.totalCallSeconds)} talk time)`],
