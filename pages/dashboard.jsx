@@ -13,7 +13,6 @@ import useStoreEmployees from "../hooks/useStoreEmployees";
 import useStorePassword from "../hooks/useStorePassword";
 import useNotesTasks from "../hooks/useNotesTasks";
 import useAnnouncements from "../hooks/useAnnouncements";
-import { totalMedia } from "./data";
 import { decryptToken } from "../utils/session";
 
 
@@ -39,8 +38,11 @@ function DashboardContent() {
   const announcementsHook = useAnnouncements(ci, aid);
 
   
-  const isAnyLoading = loading || employeesHook.loading || passwordsHook.loading || tasksHook.loading || announcementsHook.loading;
-  const anyError = error || employeesHook.error || passwordsHook.error || tasksHook.error || announcementsHook.error;
+  // Only the profile blocks the page; the cards fill in as their data
+  // arrives. (Employees without HR rights cannot list staff, which is
+  // expected, so that error is not shown.)
+  const isAnyLoading = loading && !user;
+  const anyError = !user && error ? error : null;
 
   
   const totalEmployees = employeesHook.employees?.length || 0;

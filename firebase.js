@@ -1,7 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
-import { getAnalytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { EMPLOYEE_FIREBASE_CONFIG } from "./lib/firebaseProject";
@@ -17,15 +16,6 @@ if (!getApps().length) {
   app = getApps()[0];
 }
 
-// Only initialize analytics in the browser
-let analytics;
-if (typeof window !== "undefined") {
-  try {
-    analytics = getAnalytics(app);
-  } catch (error) {
-    console.log("Analytics initialization failed:", error);
-  }
-}
 
 // Initialize Firestore and Storage
 const db = getFirestore(app);

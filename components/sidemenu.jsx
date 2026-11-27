@@ -399,13 +399,22 @@ export default function SideMenu({ mobileOverlay = false }) {
   const menuRoutesKey = menuItems(user).map((i) => i.route).filter(Boolean).join("|");
   React.useEffect(() => {
     const routes = ["/dashboard", ...menuRoutesKey.split("|")];
-    const run = () => routes.forEach((r) => r && router.prefetch(r).catch(() => {}));
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(run, { timeout: 2000 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const t = setTimeout(run, 500);
-    return () => clearTimeout(t);
+    // Skip on data-saver / very slow connections; otherwise wait until the
+    // current page has loaded its own data, then fetch the others one by one.
+    const conn = typeof navigator !== "undefined" ? navigator.connection : null;
+    if (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ""))) return undefined;
+    let cancelled = false;
+    const run = async () => {
+      for (const r of routes) {
+        if (cancelled) return;
+        if (r && r !== router.pathname) await router.prefetch(r).catch(() => {});
+      }
+    };
+    const t = setTimeout(() => {
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 3000 });
+      else run();
+    }, 2500);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [menuRoutesKey]); // eslint-disable-line react-hooks/exhaustive-deps
   // Get token from current query and decrypt
   const { token } = router.query;
@@ -552,6 +561,8 @@ export default function SideMenu({ mobileOverlay = false }) {
               <>
                 <button
                   key={item.label}
+                  onMouseEnter={() => router.prefetch(item.route).catch(() => {})}
+                  onTouchStart={() => router.prefetch(item.route).catch(() => {})}
                   onClick={() => router.push(item.route)}
                   className={`flex items-center ${
                     mobileOverlay

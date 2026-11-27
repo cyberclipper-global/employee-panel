@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
-import { app, db } from '../firebase';
+// Firestore is loaded on demand (keeps it out of the first-load bundle).
+const loadFs = () => Promise.all([import('firebase/firestore'), import('../firebase')]).then(([m, f]) => ({ ...m, db: f.db }));
 import { useAuth } from '../context/AuthContext';
 
 // Profile built from the sign-in session, used when the profile document
@@ -41,6 +41,7 @@ export default function useStoreUserInfoEdit(cid, aid) {
     setLoading(true);
     setError(null);
     try {
+      const { doc, getDoc, db } = await loadFs();
       const userRef = doc(db, 'users', memoizedCid, 'employees', memoizedAid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
@@ -70,6 +71,7 @@ export default function useStoreUserInfoEdit(cid, aid) {
     setLoading(true);
     setError(null);
     try {
+      const { doc, updateDoc, db } = await loadFs();
       const userRef = doc(db, 'users', memoizedCid, 'employees', memoizedAid);
       await updateDoc(userRef, fields);
       setUser((prev) => prev ? { ...prev, ...fields } : prev);

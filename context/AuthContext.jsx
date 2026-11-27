@@ -1,9 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { signInWithCustomToken, signOut } from "firebase/auth";
-import { auth } from "../firebase";
+// Firebase is loaded on demand so it is not part of the code every page
+// (including the sign-in page) downloads first.
+let fbPromise = null;
+function loadFirebase() {
+  if (!fbPromise) {
+    fbPromise = Promise.all([import("firebase/auth"), import("../firebase")]).then(([m, f]) => ({ ...m, auth: f.auth }));
+  }
+  return fbPromise;
+}
 import { setSessionIds } from "../utils/session";
-import { stopAllSnapshots } from "../utils/snapshotCache";
 
 // Identity comes from the server: the HttpOnly `employeeSession` cookie is
 // set by /api/auth/* after password (and 2FA when enabled). The browser then signs in to
@@ -35,6 +41,7 @@ async function authApi(action, { method = "POST", body } = {}) {
 export { authApi };
 
 async function ensureFirebaseSignIn(expectedUid) {
+  const { auth, signInWithCustomToken } = await loadFirebase();
   if (auth.currentUser && auth.currentUser.uid === expectedUid) return;
   const { token } = await authApi("firebase-token", { body: {} });
   await signInWithCustomToken(auth, token);
@@ -48,9 +55,9 @@ export function AuthProvider({ children }) {
   const loadingRef = useRef(null);
 
   const logout = useCallback(async () => {
-    stopAllSnapshots();
+    import("../utils/snapshotCache").then((m) => m.stopAllSnapshots()).catch(() => {});
     try { await authApi("logout", { body: {} }); } catch { /* ignore */ }
-    try { await signOut(auth); } catch { /* ignore */ }
+    try { const { auth, signOut } = await loadFirebase(); await signOut(auth); } catch { /* ignore */ }
     setSessionIds(null);
     setUser(null);
     setError(null);
@@ -66,7 +73,7 @@ export function AuthProvider({ children }) {
         // check, so a page reload does not need a new custom token.
         const [me] = await Promise.all([
           authApi("me", { method: "GET" }),
-          typeof auth.authStateReady === "function" ? auth.authStateReady().catch(() => {}) : null,
+          loadFirebase().then(({ auth }) => (typeof auth.authStateReady === "function" ? auth.authStateReady() : null)).catch(() => {}),
         ]);
         // Firestore access in the browser needs this; the server session is
         // valid either way, so a Firebase problem (e.g. Authentication not
@@ -84,7 +91,7 @@ export function AuthProvider({ children }) {
         if (err.status && err.status !== 401) setError("Could not verify your session");
         setSessionIds(null);
         setUser(null);
-        try { await signOut(auth); } catch { /* ignore */ }
+        try { const { auth, signOut } = await loadFirebase(); await signOut(auth); } catch { /* ignore */ }
         return false;
       } finally {
         setLoading(false);

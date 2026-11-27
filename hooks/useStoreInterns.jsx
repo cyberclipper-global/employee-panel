@@ -45,20 +45,7 @@ const useStoreInterns = (cid) => {
         }));
         setInterns(internsWithSNo);
         
-        // Trigger a sync to ensure admin panel is up to date
-        // We do this silently in the background without blocking
-        const performBackgroundSync = async () => {
-          try {
-            await triggerInternSync(null, null);
-            console.log('Background sync with admin panel completed');
-          } catch (syncErr) {
-            console.error('Background sync failed:', syncErr);
-            // Don't set error state for background sync
-          }
-        };
-        
-        // Execute sync in background
-        performBackgroundSync();
+        // (Sync runs when an intern is added, edited or removed, not on every visit.)
       } else {
         // If the response doesn't have the expected structure, set an empty array
         console.error('Unexpected response structure:', responseData);
@@ -74,21 +61,6 @@ const useStoreInterns = (cid) => {
   useEffect(() => {
     fetchInterns();
     
-    // Initial sync with admin panel when component mounts
-    if (cid) {
-      // Wrap in async function to properly handle promises
-      const performInitialSync = async () => {
-        try {
-          await triggerInternSync(null, null);
-          console.log('Initial sync with admin panel completed');
-        } catch (syncErr) {
-          console.error('Initial sync failed:', syncErr);
-          // Don't set error state for background sync
-        }
-      };
-      
-      performInitialSync();
-    }
   }, [fetchInterns, cid]);
 
   // Update task arrays when intern information changes
