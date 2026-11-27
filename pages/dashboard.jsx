@@ -5,6 +5,7 @@ import { SidebarProvider } from "../context/SidebarContext";
 import { useSidebar } from "../context/SidebarContext";
 import { useRouter } from "next/router";
 import { useUserInfo } from "../context/UserInfoContext";
+import { useAuth } from "../context/AuthContext";
 import Loader from "../loader/Loader";
 import Support from "../components/support";
 import EmployeeCard from "../components/EmployeeCard";
@@ -27,6 +28,7 @@ function DashboardContent() {
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(72);
   const { user, loading, error } = useUserInfo();
+  const { user: sessionUser } = useAuth();
   const [notification, setNotification] = useState({ show: false, message: "" });
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
@@ -231,7 +233,7 @@ function DashboardContent() {
               
               {/* Employee Card */}
               <div className="mt-8 mb-8">
-                <EmployeeCard user={{...user, companyId: ci, id: aid, companyName: user?.company || "CyberClipper Solutions LLP"}} />
+                <EmployeeCard user={{...user, companyId: ci, id: aid, companyName: sessionUser?.companyName || user?.company || ""}} />
               </div>
 
               {/* Stat Cards Section */}

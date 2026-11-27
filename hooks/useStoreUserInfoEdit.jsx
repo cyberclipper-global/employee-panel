@@ -1,8 +1,29 @@
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
 import { app, db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
+
+// Profile built from the sign-in session, used when the profile document
+// cannot be read (e.g. the employee database is still being set up).
+function sessionProfile(s) {
+  if (!s) return null;
+  const [firstName, ...rest] = String(s.name || '').split(' ');
+  return {
+    id: s.employeeId,
+    firstName: firstName || '',
+    lastName: rest.join(' '),
+    name: s.name || '',
+    email: s.email || '',
+    role: s.role || '',
+    company: s.companyName || '',
+    profileIncomplete: true,
+  };
+}
 
 export default function useStoreUserInfoEdit(cid, aid) {
+  const { user: sessionUser } = useAuth();
+  const sessionRef = React.useRef(sessionUser);
+  sessionRef.current = sessionUser;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,13 +46,19 @@ export default function useStoreUserInfoEdit(cid, aid) {
       if (userSnap.exists()) {
         const userData = { id: userSnap.id, ...userSnap.data() };
         setUser(userData);
-      } else {
-        setUser(null);
-        setError('User not found');
+        return;
       }
+      throw new Error('User not found');
     } catch (err) {
-      setError(err.message);
-      setUser(null);
+      const own = sessionRef.current && sessionRef.current.employeeId === memoizedAid && sessionRef.current.companyId === memoizedCid;
+      if (own) {
+        // Signed-in employee: keep the app usable with the session details.
+        console.warn('Profile not readable, using session details:', err.message);
+        setUser(sessionProfile(sessionRef.current));
+      } else {
+        setError(err.message);
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,11 @@
 // Employee authentication API: /api/auth/<action>
 import { authRouter } from '@/lib/auth/core';
-import { employeeAuth } from '@/lib/auth/employee';
+import { employeeAuth, ensureEmployeeProfile } from '@/lib/auth/employee';
 
 export default authRouter(employeeAuth, {
   me: ['GET', async (req) => {
     const { principal } = await employeeAuth.requireSession(req);
+    await ensureEmployeeProfile(principal.companyId, principal.employeeId);
     return {
       user: {
         companyId: principal.companyId,

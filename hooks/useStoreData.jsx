@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getFirestore, doc, setDoc, deleteDoc, arrayUnion, getDocs, query, where, collection, updateDoc } from "firebase/firestore";
 import { onSnapshot } from "../utils/snapshotCache";
-import app from '../firebase';
+import { app } from '../firebase';
 import useCloudinary from './useCloudinary';
 import useDataSyncToAdmin from './useDataSyncToAdmin';
 
