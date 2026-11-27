@@ -68,7 +68,14 @@ export function AuthProvider({ children }) {
           authApi("me", { method: "GET" }),
           typeof auth.authStateReady === "function" ? auth.authStateReady().catch(() => {}) : null,
         ]);
-        await ensureFirebaseSignIn(me.firebaseUid);
+        // Firestore access in the browser needs this; the server session is
+        // valid either way, so a Firebase problem (e.g. Authentication not
+        // enabled in the project yet) must not sign the user out.
+        try {
+          await ensureFirebaseSignIn(me.firebaseUid);
+        } catch (fbErr) {
+          console.warn("Firebase sign-in failed:", fbErr?.code || fbErr?.message);
+        }
         setSessionIds({ ci: me.user.companyId, aid: me.user.employeeId });
         setUser({ id: me.user.employeeId, ...me.user });
         setError(null);

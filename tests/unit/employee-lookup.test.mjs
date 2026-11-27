@@ -28,3 +28,20 @@ test('other errors are not hidden', async () => {
   const db = fakeDb({ groupError: Object.assign(new Error('permission denied'), { code: 7 }), companies: {} });
   await assert.rejects(() => search(db, 'a@b.co'), /permission denied/);
 });
+
+test('sign-in lookup still works when the employee project is broken', async () => {
+  const { _findInForTest: findIn } = await import('../../lib/auth/employee.js');
+  const docRef = (cid) => ({ parent: { parent: { id: cid, parent: { id: 'users', parent: null } } } });
+  const adminDb = {
+    collectionGroup: () => ({ where: (f, op, v) => ({ limit: () => ({ get: async () => ({ docs: f === 'email' && v === 'a@b.co' ? [{ id: 'e1', ref: docRef('c1'), data: () => ({ email: 'a@b.co', firstName: 'A' }) }] : [] }) }) }) }),
+  };
+  for (const broken of [
+    () => { throw Object.assign(new Error('5 NOT_FOUND: The database (default) does not exist'), { code: 5 }); },
+    () => ({ collectionGroup: () => ({ where: () => ({ limit: () => ({ get: async () => { throw Object.assign(new Error('7 PERMISSION_DENIED'), { code: 7 }); } }) }) }) }),
+  ]) {
+    const found = await findIn(adminDb, broken, 'a@b.co');
+    assert.equal(found.length, 1);
+    assert.equal(found[0].employeeId, 'e1');
+    assert.equal(found[0].companyId, 'c1');
+  }
+});
