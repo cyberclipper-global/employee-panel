@@ -128,11 +128,10 @@ function DataContent() {
   const [headerHeight, setHeaderHeight] = useState(72);
   const { user, loading, error } = useUserInfo();
   
-  // Wait for router to be ready before decrypting token
-  const isRouterReady = router.isReady && token;
-  
-  // Decrypt token only when router is ready
-  const { ci, aid } = isRouterReady ? decryptToken(token) : { ci: null, aid: null };
+  // The signed-in employee's ids come from the server session (set by
+  // AuthContext), not from the URL. The menu opens /data without ?token=,
+  // and requiring it here sent people to the login page.
+  const { ci, aid } = decryptToken(token);
   
   // Use ci from token consistently - same as employee page
   const companyId = ci;

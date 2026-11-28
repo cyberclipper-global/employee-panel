@@ -1,4 +1,5 @@
 import SideMenu from "../components/sidemenu";
+import PinSettings from "../components/auth/PinSettings";
 import Header from "../components/header";
 import { useState, useEffect, useRef } from "react";
 import { SidebarProvider } from "../context/SidebarContext";
@@ -605,6 +606,7 @@ function SecurityContent() {
             style={{ marginLeft: 0, paddingTop: headerHeight + 16 }}
           >
             <div className="max-w-6xl mx-auto">
+              <PinSettings />
               <h1 className="text-2xl font-extrabold text-[#28BD78] mb-1">
                 Password Manager
               </h1>

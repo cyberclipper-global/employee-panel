@@ -4,7 +4,7 @@ import NeuralNetwork from "../../components/bg-animation";
 import { useAuth } from "../../context/AuthContext";
 import LoginFlow from "../../components/auth/LoginFlow";
 
-// Sign-in: registered email + one-time code. Verified on the server (/api/auth/*).
+// Sign-in: registered email + one-time code or PIN. Verified on the server (/api/auth/*).
 const Login = () => {
   const router = useRouter();
   const { refreshSession } = useAuth();
@@ -67,8 +67,6 @@ const Login = () => {
         {/* Right Section (Sign In Form) */}
         <div className="flex-1 flex justify-center items-center py-8 px-4 sm:px-8 md:py-[5vh] md:px-[4vw] w-full md:w-auto">
           <div className="bg-gray-300 rounded-xl w-full max-w-[95vw] sm:max-w-[420px] pt-2 pb-4 px-4 sm:pt-3 sm:pb-6 sm:px-6 md:pt-4 md:pb-8 md:px-8 flex flex-col gap-4">
-            <h2 className="text-[24px] sm:text-[28px] md:text-[30px] font-extrabold text-[#16a34a]">Sign In</h2>
-            <p className="text-[#6b7280] text-[14px] sm:text-[15px]">Enter your registered email. We will send you a one-time code.</p>
             {notice && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{notice}</div>}
             <LoginFlow
               initialEmail={initialEmail}
