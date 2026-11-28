@@ -219,7 +219,7 @@ function EmployeesContent() {
             >
               &#8592; Back
             </button>
-            <RegisterEmployeeForm onSubmit={handleAddEmployee} />
+            <RegisterEmployeeForm onSubmit={handleAddEmployee} onCancel={() => setShowRegisterModal(false)} />
           </div>
         </div>
       )}

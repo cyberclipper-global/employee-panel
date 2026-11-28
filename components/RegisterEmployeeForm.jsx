@@ -10,8 +10,15 @@ function CustomLoader() {
   );
 }
 
-export default function RegisterEmployeeForm({ onSubmit, initialData }) {
+export default function RegisterEmployeeForm({ onSubmit, initialData, onCancel }) {
   const router = useRouter();
+  // Cancel closes the pop-up when the form is shown in one (onCancel);
+  // on its own page it goes back, or to the list when there is no history.
+  const cancelForm = () => {
+    if (onCancel) return onCancel();
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/employees");
+  };
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -367,7 +374,7 @@ export default function RegisterEmployeeForm({ onSubmit, initialData }) {
             <button type="button" onClick={addCustomQA} className="mt-2 px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200">+ Add Custom Q&A</button>
           </div>
           <div className="flex justify-between mt-6">
-            <button type="button" className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-xl" onClick={() => router.back()}>Cancel</button>
+            <button type="button" className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-xl" onClick={cancelForm}>Cancel</button>
             <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-xl">
               Next
             </button>
@@ -389,7 +396,7 @@ export default function RegisterEmployeeForm({ onSubmit, initialData }) {
             loading={loading}
           />
           <div className="flex justify-between mt-6">
-            <button type="button" className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-xl" onClick={() => router.back()}>
+            <button type="button" className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-xl" onClick={() => { setSlide(1); setFormError(""); }}>
               Back
             </button>
             <button type="button" className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-xl" onClick={() => { setForm({ firstName: "", lastName: "", email: "", phone: "", dob: "", gender: "", address: "", city: "", state: "", country: "", zip: "", department: "", role: "", employeeId: "", dateJoined: "", photo: null, company: "" }); setCustomQA([{ question: "", answer: "" }]); setSlide(1); setFormError(""); }}>Cancel</button>

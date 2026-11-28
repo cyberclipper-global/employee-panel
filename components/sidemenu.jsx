@@ -1,4 +1,9 @@
 import React from "react";
+
+// Each page draws its own copy of the menu, so the menu's scroll position
+// is kept here and restored before the browser paints the next page.
+const savedMenuScroll = { desktop: 0, mobile: 0 };
+const useBeforePaint = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useSidebar } from "../context/SidebarContext";
@@ -392,6 +397,11 @@ const underlineKeyframes = `
 `;
 
 export default function SideMenu({ mobileOverlay = false }) {
+  const navRef = React.useRef(null);
+  const scrollKey = mobileOverlay ? "mobile" : "desktop";
+  useBeforePaint(() => {
+    if (navRef.current) navRef.current.scrollTop = savedMenuScroll[scrollKey] || 0;
+  }, [scrollKey]);
   const { isOpen, toggleSidebar } = useSidebar();
   const router = useRouter();
   const { user } = useUserInfo();          // ← NEW: current user info (has user.role)
@@ -541,6 +551,8 @@ export default function SideMenu({ mobileOverlay = false }) {
         </div>
         {/* Menu items */}
         <nav
+          ref={navRef}
+          onScroll={(e) => { savedMenuScroll[scrollKey] = e.currentTarget.scrollTop; }}
           className={`flex-1 flex flex-col ${
             mobileOverlay
               ? ""

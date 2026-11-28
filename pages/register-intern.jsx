@@ -86,7 +86,7 @@ export default function RegisterInternPage() {
         {showError && (
           <div className="mb-4 bg-red-100 text-red-700 px-4 py-2 rounded text-center font-semibold">{showError}</div>
         )}
-        <RegisterInternForm onSubmit={handleSubmit} isEmployeePanel={user?.role === "employee"} />
+        <RegisterInternForm onSubmit={handleSubmit} onCancel={() => router.push("/intern")} isEmployeePanel={user?.role === "employee"} />
       </div>
     </div>
   );

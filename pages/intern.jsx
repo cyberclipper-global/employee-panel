@@ -275,7 +275,7 @@ function InternsContent() {
             >
               &#8592; Back
             </button>
-            <RegisterInternForm onSubmit={handleAddIntern} />
+            <RegisterInternForm onSubmit={handleAddIntern} onCancel={() => setShowRegisterModal(false)} />
           </div>
         </div>
       )}
