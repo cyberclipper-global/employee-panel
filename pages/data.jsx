@@ -463,8 +463,8 @@ function DataContent() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Show loading state while router is not ready
-  if (!isRouterReady) {
+  // Show loading state until the signed-in ids are known
+  if (!ci || !aid) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full">
         <div className="text-center">
