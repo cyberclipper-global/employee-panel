@@ -1,6 +1,10 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import {
+  getFirestore, initializeFirestore, connectFirestoreEmulator,
+  persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
+  terminate, clearIndexedDbPersistence,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { EMPLOYEE_FIREBASE_CONFIG } from "./lib/firebaseProject";
@@ -17,8 +21,30 @@ if (!getApps().length) {
 }
 
 
-// Initialize Firestore and Storage
-const db = getFirestore(app);
+// Firestore keeps a copy of what this browser has already read (IndexedDB),
+// so pages show their data immediately and update from the server in the
+// background. Cleared on logout (clearLocalData below).
+function createDb() {
+  if (typeof window === "undefined") return getFirestore(app);
+  if (globalThis.__ccDb) return globalThis.__ccDb;
+  let instance;
+  try {
+    instance = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    try { instance = initializeFirestore(app, { localCache: memoryLocalCache() }); } catch { instance = getFirestore(app); }
+  }
+  globalThis.__ccDb = instance;
+  return instance;
+}
+const db = createDb();
+
+// Removes the browser's copy of Firestore data (used on logout).
+export async function clearLocalData() {
+  try { await terminate(db); } catch { /* ignore */ }
+  try { await clearIndexedDbPersistence(db); } catch { /* ignore */ }
+}
 const storage = getStorage(app);
 
 // Signed in with a server-issued custom token (see context/AuthContext.jsx);

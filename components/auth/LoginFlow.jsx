@@ -4,13 +4,28 @@ import React, { useEffect, useState } from "react";
 import { Mail, Lock, KeyRound, ChevronRight } from "lucide-react";
 
 async function call(action, body) {
-  const res = await fetch(`/api/auth/${action}`, {
-    method: "POST",
-    credentials: "same-origin",
-    cache: "no-store",
-    headers: { "Content-Type": "application/json", "x-crm-request": "1" },
-    body: JSON.stringify(body || {}),
-  });
+  // One automatic retry when the network drops (the browser reports
+  // "Failed to fetch" with no answer from the server).
+  const send = async () => {
+    return await fetch(`/api/auth/${action}`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json", "x-crm-request": "1" },
+      body: JSON.stringify(body || {}),
+    });
+  };
+  let res;
+  try {
+    res = await send();
+  } catch {
+    await new Promise((r) => setTimeout(r, 800));
+    try {
+      res = await send();
+    } catch {
+      throw new Error("Could not reach the server. Check your internet connection and try again.");
+    }
+  }
   let data = {};
   try { data = await res.json(); } catch { data = {}; }
   if (!res.ok) {
@@ -164,7 +179,7 @@ export default function LoginFlow({ initialEmail = "", onSignedIn, footer }) {
           {emailField}
           <div className="relative">
             <span className={iconWrap}><Lock size={18} aria-hidden="true" /></span>
-            <input id="cc-pin" type="password" aria-label="PIN" placeholder="6–8 digit PIN" className={iconInput} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))} inputMode="numeric" autoComplete="current-password" minLength={6} maxLength={8} required autoFocus={!!email} />
+            <input id="cc-pin" type="text" aria-label="PIN" placeholder="6–8 digit PIN" className={iconInput} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))} inputMode="numeric" pattern="[0-9]*" autoComplete="off" autoCorrect="off" spellCheck={false} data-1p-ignore="true" data-lpignore="true" data-form-type="other" style={pin ? { WebkitTextSecurity: "disc" } : undefined} minLength={6} maxLength={8} required autoFocus={!!email} />
           </div>
           <button type="submit" className={primaryArrow} disabled={busy || !email.trim() || pin.length < 6}>
             {busy ? "Checking…" : <>Login with PIN <ChevronRight size={18} aria-hidden="true" /></>}

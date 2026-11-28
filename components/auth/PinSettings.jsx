@@ -4,13 +4,28 @@
 import React, { useEffect, useState } from "react";
 
 async function call(action, { method = "POST", body } = {}) {
-  const res = await fetch(`/api/auth/${action}`, {
-    method,
-    credentials: "same-origin",
-    cache: "no-store",
-    headers: { "x-crm-request": "1", ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  // One automatic retry when the network drops (the browser reports
+  // "Failed to fetch" with no answer from the server).
+  const send = async () => {
+    return await fetch(`/api/auth/${action}`, {
+      method,
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "x-crm-request": "1", ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  };
+  let res;
+  try {
+    res = await send();
+  } catch {
+    await new Promise((r) => setTimeout(r, 800));
+    try {
+      res = await send();
+    } catch {
+      throw new Error("Could not reach the server. Check your internet connection and try again.");
+    }
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Something went wrong. Please try again.");
   return data;
@@ -20,6 +35,21 @@ const input = "w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-
 const primary = "rounded-lg bg-[#28BD78] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60";
 const secondary = "rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60";
 const digits = (v, max) => v.replace(/\D/g, "").slice(0, max);
+// PIN boxes are plain number fields with the digits shown as dots. They are
+// not password fields, so browsers do not offer to generate or fill a
+// password into them.
+const pinField = {
+  type: "text",
+  inputMode: "numeric",
+  pattern: "[0-9]*",
+  autoComplete: "off",
+  autoCorrect: "off",
+  spellCheck: false,
+  "data-1p-ignore": "true",
+  "data-lpignore": "true",
+  "data-form-type": "other",
+  style: { WebkitTextSecurity: "disc" },
+};
 
 export default function PinSettings() {
   const [status, setStatus] = useState(null); // { hasPin, pinSetAt, email }
@@ -101,9 +131,9 @@ export default function PinSettings() {
       {step === "enter" && (
         <form onSubmit={sendCode} className="flex flex-col gap-3">
           <label className="text-sm font-semibold text-gray-700" htmlFor="pin-new">New PIN (6 to 8 digits)</label>
-          <input id="pin-new" type="password" inputMode="numeric" autoComplete="new-password" className={input} value={pin} onChange={(e) => setPin(digits(e.target.value, 8))} required autoFocus />
+          <input id="pin-new" {...pinField} className={input} value={pin} onChange={(e) => setPin(digits(e.target.value, 8))} required autoFocus />
           <label className="text-sm font-semibold text-gray-700" htmlFor="pin-again">Type the PIN again</label>
-          <input id="pin-again" type="password" inputMode="numeric" autoComplete="new-password" className={input} value={pin2} onChange={(e) => setPin2(digits(e.target.value, 8))} required />
+          <input id="pin-again" {...pinField} className={input} value={pin2} onChange={(e) => setPin2(digits(e.target.value, 8))} required />
           <p className="text-xs text-gray-500">Avoid easy PINs like 111111 or 123456.</p>
           <div className="flex gap-2">
             <button type="submit" className={primary} disabled={busy || pin.length < 6 || pin2.length < 6}>{busy ? "Sending code…" : "Continue"}</button>

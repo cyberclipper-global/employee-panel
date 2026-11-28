@@ -20,12 +20,42 @@ function sessionProfile(s) {
   };
 }
 
+// The employee's own profile is shown from the last saved copy straight
+// away and refreshed from the database in the background.
+const PROFILE_KEY = 'cc_emp_profile';
+function readProfile(cid, aid) {
+  if (!cid || !aid || typeof window === 'undefined') return null;
+  try {
+    const p = JSON.parse(window.localStorage.getItem(PROFILE_KEY) || 'null');
+    return p && p.cid === cid && p.aid === aid ? p.user : null;
+  } catch { return null; }
+}
+function writeProfile(cid, aid, user) {
+  try {
+    if (user) window.localStorage.setItem(PROFILE_KEY, JSON.stringify({ cid, aid, user }));
+    else window.localStorage.removeItem(PROFILE_KEY);
+  } catch { /* storage unavailable */ }
+}
+
 export default function useStoreUserInfoEdit(cid, aid) {
   const { user: sessionUser } = useAuth();
   const sessionRef = React.useRef(sessionUser);
   sessionRef.current = sessionUser;
-  const [user, setUser] = useState(null);
+  const [user, setUserState] = useState(() => readProfile(cid, aid));
   const [loading, setLoading] = useState(false);
+  // Only the signed-in employee's own profile is saved in the browser.
+  const isOwn = !!(sessionUser && sessionUser.employeeId === aid && sessionUser.companyId === cid);
+  const setUser = useCallback((next) => {
+    setUserState((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next;
+      if (isOwn && value && !value.profileIncomplete) writeProfile(cid, aid, value);
+      return value;
+    });
+  }, [isOwn, cid, aid]);
+  React.useEffect(() => {
+    const cached = readProfile(cid, aid);
+    if (cached) setUserState((prev) => (prev && prev.id === aid ? prev : cached));
+  }, [cid, aid]);
   const [error, setError] = useState(null);
 
   // Memoize the parameters to prevent unnecessary re-renders
@@ -38,7 +68,8 @@ export default function useStoreUserInfoEdit(cid, aid) {
       return;
     }
 
-    setLoading(true);
+    const hasCopy = !!readProfile(memoizedCid, memoizedAid);
+    if (!hasCopy) setLoading(true);
     setError(null);
     try {
       const { doc, getDoc, db } = await loadFs();
@@ -55,7 +86,7 @@ export default function useStoreUserInfoEdit(cid, aid) {
       if (own) {
         // Signed-in employee: keep the app usable with the session details.
         console.warn('Profile not readable, using session details:', err.message);
-        setUser(sessionProfile(sessionRef.current));
+        if (!hasCopy) setUser(sessionProfile(sessionRef.current));
       } else {
         setError(err.message);
         setUser(null);
@@ -63,7 +94,7 @@ export default function useStoreUserInfoEdit(cid, aid) {
     } finally {
       setLoading(false);
     }
-  }, [memoizedCid, memoizedAid]);
+  }, [memoizedCid, memoizedAid, setUser]);
 
   // Update all fields at once
   const updateAllFields = useCallback(async (fields) => {

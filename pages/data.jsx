@@ -476,7 +476,7 @@ function DataContent() {
   }
 
   if (!ci || !aid) return null;
-  if (loading || employeeDataLoading) {
+  if ((loading && !user) || employeeDataLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full">
         <Loader />

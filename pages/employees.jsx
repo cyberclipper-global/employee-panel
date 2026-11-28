@@ -160,7 +160,7 @@ function EmployeesContent() {
 
   // Only return after all hooks
   if (!ci || !aid) return null;
-  if (loading || empLoading) {
+  if ((loading && !user) || empLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full">
         <Loader />

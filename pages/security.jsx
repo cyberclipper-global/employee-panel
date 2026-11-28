@@ -138,7 +138,7 @@ function SecurityContent() {
     if (error || passwordsError) {
       setNotification({
         show: true,
-        message: `Error loading user info: ${error || passwordsError}`,
+        message: passwordsError ? `Could not load your passwords: ${passwordsError}` : `Error loading user info: ${error}`,
         type: "error",
       });
     }
@@ -156,7 +156,8 @@ function SecurityContent() {
   }, [notification.show]);
 
   if (!ci || !aid) return null;
-  if (userLoading || passwordsLoading) {
+  // The page shows at once; the password list fills in when it arrives.
+  if (userLoading && !user) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full">
         <Loader />
@@ -787,7 +788,7 @@ function SecurityContent() {
               <div className="sm:hidden flex flex-col gap-3 mt-3">
                 {filteredPasswords.length === 0 && (
                   <div className="text-center py-8 text-gray-400 bg-white rounded-xl shadow border border-gray-100">
-                    No passwords found.
+                    {passwordsLoading ? "Fetching passwords…" : "No passwords found."}
                   </div>
                 )}
                 {filteredPasswords.map((p, idx) => (
@@ -966,7 +967,7 @@ function SecurityContent() {
                   <tbody className="bg-white divide-y divide-gray-100">
                     {filteredPasswords.length === 0 && (
                       <tr>
-                        <td colSpan={10} className="text-center py-8 text-gray-400">No passwords found.</td>
+                        <td colSpan={10} className="text-center py-8 text-gray-400">{passwordsLoading ? "Fetching passwords…" : "No passwords found."}</td>
                       </tr>
                     )}
                     {filteredPasswords.map((p, idx) => (

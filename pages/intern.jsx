@@ -216,7 +216,7 @@ function InternsContent() {
 
   // Only return after all hooks
   if (!isAuthenticated || (!ci && !aid)) return null;
-  if (loading || internLoading) {
+  if ((loading && !user) || internLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full">
         <Loader />

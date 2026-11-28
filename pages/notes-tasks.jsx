@@ -280,7 +280,7 @@ function NotesTasksContent() {
 
   // Conditional returns after all hooks
   if (!ci || !aid) return null;
-  if (loading || tasksLoading) {
+  if ((loading && !user) || tasksLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full">
         <Loader />

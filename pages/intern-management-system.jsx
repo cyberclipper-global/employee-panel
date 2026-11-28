@@ -300,7 +300,7 @@ export default function InternManagementSystem() {
     }
   };
 
-  if (userLoading || internsLoading) {
+  if ((userLoading && !user) || internsLoading) {
     return <Loader />;
   }
 

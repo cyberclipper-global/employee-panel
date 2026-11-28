@@ -192,7 +192,7 @@ function ProductsContent() {
 
   // Only return after all hooks
   if (!ci || !aid) return null;
-  if (loading || productsLoading) {
+  if ((loading && !user) || productsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full">
         <Loader />

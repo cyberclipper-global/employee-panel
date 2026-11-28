@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 let fbPromise = null;
 function loadFirebase() {
   if (!fbPromise) {
-    fbPromise = Promise.all([import("firebase/auth"), import("../firebase")]).then(([m, f]) => ({ ...m, auth: f.auth }));
+    fbPromise = Promise.all([import("firebase/auth"), import("../firebase")]).then(([m, f]) => ({ ...m, auth: f.auth, clearLocalData: f.clearLocalData }));
   }
   return fbPromise;
 }
@@ -40,6 +40,22 @@ async function authApi(action, { method = "POST", body } = {}) {
 
 export { authApi };
 
+// The last confirmed session, so a reload can show the panel straight away
+// while the server check runs in the background. It holds only display
+// details; every read and write is still checked by the server and by the
+// Firestore rules.
+const CACHE_KEY = "cc_emp_me";
+function readCachedMe() {
+  try { return JSON.parse(window.localStorage.getItem(CACHE_KEY) || "null"); } catch { return null; }
+}
+function writeCachedMe(me) {
+  try {
+    if (me) window.localStorage.setItem(CACHE_KEY, JSON.stringify({ user: me.user, firebaseUid: me.firebaseUid }));
+    else window.localStorage.removeItem(CACHE_KEY);
+  } catch { /* storage unavailable */ }
+}
+const stopAllSnapshots = () => import("../utils/snapshotCache").then((m) => m.stopAllSnapshots()).catch(() => {});
+
 async function ensureFirebaseSignIn(expectedUid) {
   const { auth, signInWithCustomToken } = await loadFirebase();
   if (auth.currentUser && auth.currentUser.uid === expectedUid) return;
@@ -55,43 +71,103 @@ export function AuthProvider({ children }) {
   const loadingRef = useRef(null);
 
   const logout = useCallback(async () => {
-    import("../utils/snapshotCache").then((m) => m.stopAllSnapshots()).catch(() => {});
+    stopAllSnapshots();
+    writeCachedMe(null);
+    try { window.localStorage.removeItem("cc_emp_profile"); } catch { /* ignore */ }
     try { await authApi("logout", { body: {} }); } catch { /* ignore */ }
     try { const { auth, signOut } = await loadFirebase(); await signOut(auth); } catch { /* ignore */ }
     setSessionIds(null);
     setUser(null);
     setError(null);
-    router.push("/auth/login");
-  }, [router]);
+    // Firestore cannot be used after its local copy is cleared, so load the
+    // login page fresh.
+    try { const { clearLocalData } = await loadFirebase(); await clearLocalData(); } catch { /* ignore */ }
+    window.location.assign("/auth/login");
+  }, []);
+
+  const applyMe = useCallback((me) => {
+    setSessionIds({ ci: me.user.companyId, aid: me.user.employeeId });
+    setUser((prev) => {
+      const next = { id: me.user.employeeId, ...me.user };
+      return prev && JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+    });
+    setError(null);
+  }, []);
+
+  const signedOut = useCallback(async (err) => {
+    if (err?.status && err.status !== 401) setError("Could not verify your session");
+    writeCachedMe(null);
+    stopAllSnapshots();
+    setSessionIds(null);
+    setUser(null);
+    try { const { auth, signOut } = await loadFirebase(); await signOut(auth); } catch { /* ignore */ }
+  }, []);
 
   // Loads the server session; returns true when signed in.
-  const validateSession = useCallback(async () => {
-    if (loadingRef.current) return loadingRef.current;
+  // fresh: skip the instant path (used right after signing in).
+  const validateSession = useCallback(async ({ fresh = false } = {}) => {
+    if (loadingRef.current && !fresh) return loadingRef.current;
     loadingRef.current = (async () => {
+      const cached = fresh ? null : readCachedMe();
+      const mePromise = authApi("me", { method: "GET" });
+      mePromise.catch(() => {}); // handled below
+      // Fast path: the browser still holds the Firebase sign-in for the same
+      // account as last time -> show the panel now, confirm in the background.
+      if (cached?.user?.companyId && cached.firebaseUid) {
+        let auth = null;
+        try {
+          ({ auth } = await loadFirebase());
+          if (typeof auth.authStateReady === "function") await auth.authStateReady();
+        } catch { /* ignore */ }
+        if (auth && auth.currentUser && auth.currentUser.uid === cached.firebaseUid) {
+          applyMe(cached);
+          setLoading(false);
+          mePromise.then(async (me) => {
+            if (me.firebaseUid !== cached.firebaseUid) {
+              // Rare: the server session belongs to another account now.
+              writeCachedMe(null);
+              try { await ensureFirebaseSignIn(me.firebaseUid); } catch { /* ignore */ }
+              let reloadedRecently = false;
+              try {
+                reloadedRecently = Date.now() - Number(window.sessionStorage.getItem("cc_emp_reload") || 0) < 30000;
+                window.sessionStorage.setItem("cc_emp_reload", String(Date.now()));
+              } catch { /* ignore */ }
+              if (!reloadedRecently) window.location.reload();
+              else applyMe(me);
+              return;
+            }
+            writeCachedMe(me);
+            applyMe(me);
+          }).catch(async (err) => {
+            if (err.status === 401 || err.status === 403) await signedOut(err);
+            // Network errors: keep the page; the next navigation checks again.
+          }).finally(() => { loadingRef.current = null; });
+          return true;
+        }
+      }
       try {
         // Restoring the saved Firebase sign-in runs alongside the session
         // check, so a page reload does not need a new custom token.
         const [me] = await Promise.all([
-          authApi("me", { method: "GET" }),
+          mePromise,
           loadFirebase().then(({ auth }) => (typeof auth.authStateReady === "function" ? auth.authStateReady() : null)).catch(() => {}),
         ]);
         // Firestore access in the browser needs this; the server session is
         // valid either way, so a Firebase problem (e.g. Authentication not
         // enabled in the project yet) must not sign the user out.
+        let firebaseOk = true;
         try {
           await ensureFirebaseSignIn(me.firebaseUid);
         } catch (fbErr) {
+          firebaseOk = false;
           console.warn("Firebase sign-in failed:", fbErr?.code || fbErr?.message);
         }
-        setSessionIds({ ci: me.user.companyId, aid: me.user.employeeId });
-        setUser({ id: me.user.employeeId, ...me.user });
-        setError(null);
+        // Only remember the session for the instant path when Firebase sign-in works.
+        writeCachedMe(firebaseOk ? me : null);
+        applyMe(me);
         return true;
       } catch (err) {
-        if (err.status && err.status !== 401) setError("Could not verify your session");
-        setSessionIds(null);
-        setUser(null);
-        try { const { auth, signOut } = await loadFirebase(); await signOut(auth); } catch { /* ignore */ }
+        await signedOut(err);
         return false;
       } finally {
         setLoading(false);
@@ -99,7 +175,7 @@ export function AuthProvider({ children }) {
       }
     })();
     return loadingRef.current;
-  }, [logout]);
+  }, [applyMe, signedOut]);
 
   useEffect(() => {
     if (PUBLIC_ROUTES.has(router.pathname)) {
@@ -115,7 +191,7 @@ export function AuthProvider({ children }) {
     error,
     logout,
     validateSession,
-    refreshSession: validateSession,
+    refreshSession: () => validateSession({ fresh: true }),
     isAuthenticated: !!user,
   };
 
